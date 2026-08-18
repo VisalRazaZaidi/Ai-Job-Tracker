@@ -196,6 +196,17 @@ npm run test:watch  # watch tests while developing
 ### Prisma note
 If `npx prisma generate` fails on your machine due to environment or filesystem issues, run it manually in your terminal and send the exact error output before continuing. This project relies on Prisma for the database layer and AI-analysis persistence.
 
+### Project Context (STATE.md)
+This repository includes a `STATE.md` file that tracks the project's phases, architecture, progress, and deployment notes. This file is intentionally excluded from version control (`.gitignore`) because it is maintained by individual developers as a personal reference.
+
+**When you first clone this project, create your own `STATE.md` file** to track:
+- Current phase and implementation status
+- Architecture decisions and notes for your AI agent
+- Deployment checklist and environment setup
+- Any debugging notes or blockers
+
+Your `STATE.md` serves as a living document for you and your AI assistant during development. Each contributor creates and maintains their own copy — this keeps the repo clean and lets everyone use their own tracking format.
+
 ### Authentication
 The app uses Clerk and protects the main dashboard and API routes behind signed-in user sessions.
 

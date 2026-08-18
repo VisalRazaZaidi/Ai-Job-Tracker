@@ -40,3 +40,6 @@ coverage/
 # local prompts and playwright configs
 Prompts/
 .playwright-mcp/
+
+# project context tracking (developer-specific)
+STATE.md

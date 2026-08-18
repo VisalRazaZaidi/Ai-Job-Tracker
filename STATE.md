@@ -366,3 +366,75 @@ on this working path.
 detected`, so the Claude/GPT ids in the picker will fail. Only Gemini works until that key
 is regenerated or native Anthropic/OpenAI providers are added (branch in `getModel`, same
 shape as the Gemini branch).
+
+---
+
+## 6) Deployment & Production
+
+**Current status (2026-08-18):**
+- ✅ Project pushed to GitHub
+- ✅ Repository initialized, .gitignore configured, `Prompts/` and `.playwright-mcp/` excluded
+- ✅ All phases implemented and tested (Phase 1–5 complete)
+- ⏳ **Next:** Deploy to Vercel + PostgreSQL database in production
+
+### Recommended database provider: Neon
+
+For production deployment, **use Neon** for PostgreSQL hosting. See the database comparison in the README or in your development notes for the reasoning (Neon is simpler since we already use Clerk for auth).
+
+### Deployment steps (Neon + Vercel)
+
+**1. Create Neon PostgreSQL database**
+   - Sign up at https://neon.tech
+   - Create a new project (e.g., "ai-job-tracker")
+   - Copy the connection string (looks like `postgresql://user:password@region.neon.tech/db-name`)
+   - Save it — we'll use it as `DATABASE_URL` in Vercel
+
+**2. Prepare environment for Vercel**
+   - Create `.env.production` (optional; Vercel will use `.env` fallback if not present)
+   - Ensure `.env` is in `.gitignore` (✅ already done)
+   - Required production secrets (Vercel will prompt for these):
+     - `DATABASE_URL` (Neon connection string)
+     - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+     - `CLERK_SECRET_KEY`
+     - `GOOGLE_GENERATIVE_AI_API_KEY` (Gemini)
+     - Any other `.env` vars from your local `.env`
+
+**3. Push to GitHub & deploy on Vercel**
+   - Push your latest commit to GitHub
+   - Go to https://vercel.com → Import Project
+   - Select your GitHub repo
+   - Vercel auto-detects Next.js
+   - Add environment variables (paste from `.env`)
+   - Click Deploy
+
+**4. After deploy: Run Prisma on Vercel**
+   - Vercel's build script runs `prisma generate && next build` (see `package.json`)
+   - Vercel will run migrations automatically if configured in build script
+   - To apply schema: add a build step or run `npx prisma migrate deploy` post-deploy
+   - **Recommended:** Add to `package.json` build script:
+     ```json
+     "build": "prisma generate && next build"
+     ```
+     (already done ✅), OR add a `vercel.json` with a post-deploy hook if you have migrations.
+
+**5. Verify in production**
+   - Check logs in Vercel dashboard
+   - Test auth (Clerk sign-in should work)
+   - Create a test job and resume
+   - Run AI analysis (Gemini should respond)
+   - Check match scoring
+
+### ⚠️ Notes on migration & schema sync
+
+- **No `migrations/` folder yet** — the project uses `prisma db push` (dev-friendly, not for team CI)
+- **For production:** either keep `db push`, or migrate to `prisma migrate` (creates versioned migration files)
+  - `db push` is fine for solo projects; switch to `migrate` if you add team members
+- **Prisma in build:** `next build` runs `prisma generate` (via `package.json` script) — this is correct; it ensures `@prisma/client` is generated fresh on deploy
+
+### Next steps after deploy
+
+1. ✅ Deploy database (Neon)
+2. ✅ Deploy app (Vercel)
+3. ⏳ Point custom domain to Vercel (if desired)
+4. ⏳ Set up GitHub Actions for CI/CD (optional; Vercel auto-deploys on `main` push)
+5. ⏳ **Phase 6:** Resume Review + PDF Export (continue product work)
