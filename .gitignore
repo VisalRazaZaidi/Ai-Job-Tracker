@@ -36,3 +36,7 @@ coverage/
 
 # misc
 *.log
+
+# local prompts and playwright configs
+Prompts/
+.playwright-mcp/
