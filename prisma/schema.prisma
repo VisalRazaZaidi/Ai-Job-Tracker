@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Local mirror of the Clerk user. Created on first authenticated request
+// via getOrCreateUser() in src/lib/auth.ts.
+model User {
+  id         String      @id // Clerk userId
+  email      String
+  createdAt  DateTime    @default(now())
+  jobs       Job[]
+  recruiters Recruiter[]
+  resumes    Resume[]
+  analyses   Analysis[]
+}
+
+model Job {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company     String
+  position    String
+  status      JobStatus @default(WISHLIST)
+  source      String?
+  jobLink     String?
+  description String?   @db.Text
+  salary      String?
+  location    String?
+  workMode    WorkMode?
+  dateApplied DateTime?
+  nextFollowUp DateTime?
+  notes       String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  analyses    Analysis[]
+
+  @@index([userId, status])
+}
+
+enum JobStatus {
+  WISHLIST
+  APPLIED
+  INTERVIEW
+  ASSESSMENT
+  TECHNICAL
+  HR
+  OFFER
+  REJECTED
+  ACCEPTED
+  WITHDRAWN
+  ARCHIVED
+}
+
+enum WorkMode {
+  REMOTE
+  HYBRID
+  ONSITE
+}
+
+// A recruiter/contact and the running notes of your conversation with them.
+// ponytail: "Communication History" from the spec is kept as a single notes
+// field; add a RecruiterEvent model only when a real timeline is needed.
+model Recruiter {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  company      String?
+  email        String?
+  phone        String?
+  linkedinUrl  String?
+  notes        String?   @db.Text
+  lastContact  DateTime?
+  nextFollowUp DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+// A resume stored as editable markdown (the "master resume" source of truth).
+// Uploaded PDF/DOCX files are extracted to markdown on import; sourceFile keeps
+// the original filename. AI-tailored variants set parentId → the master they came
+// from (self-relation), so the list can flag them and lineage is queryable.
+model Resume {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  content    String   @db.Text
+  sourceFile String?
+  parentId   String?
+  parent     Resume?  @relation("ResumeVersions", fields: [parentId], references: [id], onDelete: SetNull)
+  versions   Resume[] @relation("ResumeVersions")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// A saved AI job-description analysis. `result` holds the full jobAnalysisSchema
+// object as JSON so the history list can re-render it without another AI call.
+// jobId links the analysis to the Job it was run on (Phase 4). Nullable: legacy
+// paste-a-JD analyses have no Job, and deleting a Job unlinks (SetNull) rather
+// than deletes its analyses, preserving history.
+model Analysis {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId       String?
+  job         Job?     @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  title       String
+  description String   @db.Text
+  result      Json
+  model       String
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([jobId])
+}
