@@ -68,6 +68,7 @@ export async function extractResumeText(buffer: Buffer, filename: string): Promi
     // pdf-parse's PDF.js build expects this browser global on Vercel's Node runtime.
     installDomMatrixPolyfill();
     const { PDFParse } = await import("pdf-parse");
+    PDFParse.setWorker(require.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs"));
     const parser = new PDFParse({ data: new Uint8Array(buffer) });
     try {
       text = (await parser.getText()).text;
