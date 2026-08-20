@@ -1,62 +1,4 @@
-import path from "node:path";
 import mammoth from "mammoth";
-
-type MatrixValues = { a: number; b: number; c: number; d: number; e: number; f: number };
-
-class NodeDOMMatrix {
-  a: number;
-  b: number;
-  c: number;
-  d: number;
-  e: number;
-  f: number;
-
-  constructor(values?: number[] | MatrixValues) {
-    if (Array.isArray(values)) {
-      [this.a, this.b, this.c, this.d, this.e, this.f] = values;
-    } else if (values) {
-      ({ a: this.a, b: this.b, c: this.c, d: this.d, e: this.e, f: this.f } = values);
-    } else {
-      this.a = 1;
-      this.b = 0;
-      this.c = 0;
-      this.d = 1;
-      this.e = 0;
-      this.f = 0;
-    }
-  }
-
-  translate(x: number, y: number) {
-    return new NodeDOMMatrix({
-      a: this.a,
-      b: this.b,
-      c: this.c,
-      d: this.d,
-      e: this.e + x,
-      f: this.f + y,
-    });
-  }
-
-  scale(x: number, y = x) {
-    return new NodeDOMMatrix({
-      a: this.a * x,
-      b: this.b * x,
-      c: this.c * y,
-      d: this.d * y,
-      e: this.e,
-      f: this.f,
-    });
-  }
-}
-
-function installDomMatrixPolyfill() {
-  const globals = globalThis as unknown as {
-    DOMMatrix?: typeof NodeDOMMatrix;
-  };
-  if (!globals.DOMMatrix) {
-    globals.DOMMatrix = NodeDOMMatrix as unknown as typeof NodeDOMMatrix;
-  }
-}
 
 // Extract plain text from an uploaded resume. Text-based PDFs and DOCX extract
 // well; scanned/image PDFs have no text layer and will come back empty (caller
@@ -66,24 +8,8 @@ export async function extractResumeText(buffer: Buffer, filename: string): Promi
 
   let text: string;
   if (ext === "pdf") {
-    // pdf-parse's PDF.js build expects this browser global on Vercel's Node runtime.
-    installDomMatrixPolyfill();
-    const { PDFParse } = await import("pdf-parse");
-    const workerPath = path.join(
-      process.cwd(),
-      "node_modules",
-      "pdfjs-dist",
-      "legacy",
-      "build",
-      "pdf.worker.mjs",
-    );
-    PDFParse.setWorker(workerPath);
-    const parser = new PDFParse({ data: new Uint8Array(buffer) });
-    try {
-      text = (await parser.getText()).text;
-    } finally {
-      await parser.destroy();
-    }
+    const pdfParse = (await import("pdf-parse")).default;
+    text = (await pdfParse(buffer)).text;
   } else if (ext === "docx") {
     text = (await mammoth.extractRawText({ buffer })).value;
   } else {
