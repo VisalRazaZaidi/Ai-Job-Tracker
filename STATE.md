@@ -1,7 +1,7 @@
 # Project State — AI Job Tracker
 
 _Living doc. Update as the project progresses._
-Last updated: 2026-08-21 (Productization v2 — Phase 7: Application Lifecycle + Historical Integrity)
+Last updated: 2026-08-21 (Productization v2 — Phase 8: Insights analytics)
 
 ---
 
@@ -168,13 +168,51 @@ and `PRODUCT_UX_SPEC_V2.md`. Working in vertical slices.
   trimming; null-JD → ""). Consistent with the repo's pure-function testing (no DB harness).
   `tsc`, **84 tests**, `prisma validate`, and `next build` all green.
 
+- **Phase 8 — Insights analytics.** Turned the accumulated application history into
+  decision-support analytics at `/dashboard/insights` (previously a stub). **No AI, no
+  Recharts.** **Architecture:** all metrics are derived **client-side** from two
+  owner-scoped React Query caches — the existing `useJobs` (current pipeline position)
+  plus a new `useApplications`. The single new endpoint `GET /api/applications` is
+  owner-scoped (`where: { userId }`, never a global fetch filtered after) and returns each
+  **`ApplicationSnapshot`** (the immutable historical record) joined with its job's CURRENT
+  status as an `ApplicationRecord` (`{ id, appliedAt, matchScore, status }`). No analytics
+  mega-endpoint, no new model. **Data sources (honest):** rates/funnel read live `Job.status`;
+  historical **match** and **activity over time** read the snapshot's apply-time `matchScore`
+  and `appliedAt` — never a live recompute or the ephemeral match endpoint. **Deterministic
+  core** (`src/features/analytics/insights.ts`, DB-free, `now` injected, unit-tested):
+  `applicationStats` (total/interviewed/offers + interview & offer rates), `matchStats`
+  (avg/high/low over recorded scores, ignoring nulls), `matchDistribution` (four score bands),
+  `matchByOutcome` (avg score of interviewed vs not — returns null unless BOTH groups clear a
+  3-sample floor; correlation, never causation), `weeklyActivity` (trailing 8 local calendar
+  weeks, Monday start at local midnight), `periodComparison` (last 30d vs prior 30d), and
+  `funnelStats` (reuses `PIPELINE_STAGES` — the single lifecycle taxonomy, no second
+  definition). **Honest-data contract:** every rate/average returns `null` (never 0/NaN/∞)
+  when its denominator is empty, so the UI renders **"Not enough data"** — never a misleading
+  zero. **UI** (`src/app/dashboard/insights/page.tsx`): KPI summary row, weekly-activity CSS
+  bar chart, application funnel (stage bars in the signature pipeline hues + adjacent
+  Applied→Interview / Interview→Offer conversions), and match-intelligence (avg + high/low,
+  distribution bars, optional outcome comparison). Charts are div/CSS bars (no chart lib) with
+  `role="img"` + `aria-label` **and** a visible textual summary sentence — no hover-only data
+  (accessible per §29/§35). Full state coverage mirroring Home: skeleton, error + **Try Again**
+  (refetches both queries), a new-user **empty state**, and a distinct "tracking jobs but none
+  applied yet" state that still shows the funnel. A **Data notes** section states each metric's
+  definition and the honest limitations: the funnel compares *current* pipeline position (status
+  is one mutable field with no stage history, so interview-then-rejected now counts under
+  Rejected), and **source/role performance** (source is free-text, unnormalized) and **employer
+  response time** (no response timestamp exists) are **deferred, not faked**. **No server-side
+  aggregation was needed** — one user's dataset is small; deriving in the client kept the
+  endpoint thin and reused the existing cache pattern. **Tests:** 16 new vitest cases for the
+  pure functions (empty→null rates, counts, rounding, null-score handling, distribution bands,
+  outcome sample floor, local-week grouping + window drop, ± growth and zero-baseline→null delta,
+  funnel counts + conversions). `tsc`, **100 tests**, and `next build` all green.
+
 **Not yet implemented**
 - Phase 6 — Resume Review + Export ✅
 - Phase 7 — Application Lifecycle + Historical Integrity ✅
-- Phase 8 — Insights analytics
+- Phase 8 — Insights analytics ✅
 - Phase 9 — Global Search
 
-**→ Next productization phase: Phase 8 — Insights analytics.**
+**→ Next productization phase: Phase 9 — Global Search.**
 
 **Recorded future product decisions (NOT implemented):** AI Workspace as a persistent
 job-centric workspace (not a forced wizard); "Analyze New Job" as a first-class entry
@@ -283,18 +321,22 @@ Ai Job Tracker/
 │   │   │   ├── jobs/page.tsx    # Jobs (Applications): list + filters + dialogs
 │   │   │   ├── recruiters/page.tsx  # Recruiters (Contacts): list + search + form
 │   │   │   ├── workspace/page.tsx   # AI Workspace — job picker + job-keyed analysis (Phase 4)
-│   │   │   └── insights/page.tsx    # Insights — Phase 1 route stub
+│   │   │   └── insights/page.tsx    # Insights — analytics dashboard (Phase 8): KPIs + activity + funnel + match
 │   │   ├── sign-in/[[...sign-in]]/page.tsx
 │   │   ├── sign-up/[[...sign-up]]/page.tsx
 │   │   └── api/
 │   │       ├── jobs/route.ts + [id]/route.ts        # ownership-checked CRUD
 │   │       │   └── [id]/apply/route.ts               # Phase 7 — GET snapshot / POST mark-applied (idempotent, atomic, no AI)
 │   │       ├── recruiters/route.ts + [id]/route.ts  # ownership-checked CRUD
+│   │       ├── applications/route.ts                  # Phase 8 — GET owner-scoped snapshots + live status (feeds Insights)
 │   │       ├── resumes/route.ts + [id]/route.ts + import/route.ts
 │   │       └── ai/analyze-job/route.ts + tailor-resume/route.ts + analyses/route.ts + analyses/[id]/route.ts
 │   ├── lib/ai.ts                # AI provider layer: getModel (Gemini→native Google, else→gateway) / AI_MODELS / isAllowedModel
 │   ├── lib/extract.ts           # PDF/DOCX → text (pdf-parse / mammoth)
 │   └── features/
+│       ├── analytics/
+│       │   ├── insights.ts / insights.test.ts  # Phase 8 pure analytics (16 cases): stats/match/distribution/outcome/weekly/period/funnel
+│       │   └── hooks.ts         # useApplications
 │       ├── ai/
 │       │   ├── schema.ts / schema.test.ts   # jobAnalysis + dual-mode input Zod (11 vitest cases)
 │       │   ├── AnalysisResult.tsx # shared analysis presentation (Analyze page + Workspace)
@@ -368,7 +410,7 @@ Built accurately **for the chosen scope** (auth + Jobs CRUD + dashboard + landin
 | CRUD Resume Versions | ✅ | markdown CRUD + PDF/DOCX import + AI-tailored versions (parentId lineage) + PDF export |
 | AI Job Analysis | ✅ | multi-provider; saved history (list/open/delete); deterministic ATS match scoring |
 | AI Resume Generation | ✅ | tailor a resume to a saved job (rewrite/reorder, no invention) |
-| Analytics | ❌ | |
+| Analytics | ✅ | Insights dashboard: KPIs, weekly activity, funnel + conversions, Match Score intelligence (Phase 8) |
 
 **Notable gaps**
 - **Recent activity is derived** from `updatedAt` (top 6 across jobs+recruiters),
@@ -376,7 +418,7 @@ Built accurately **for the chosen scope** (auth + Jobs CRUD + dashboard + landin
   per-change history or "X moved to INTERVIEW" granularity.
 - Follow-up **reminders** are surfaced on the Overview but not *scheduled* (no
   email/push); the spec's "follow up after 5 days" presets aren't built.
-- Whole pillars unbuilt: **Resume/AI, Analytics**.
+- Remaining pillar: **Global Search** (Phase 9). Resume/AI and Analytics are built.
 - Accessibility: form dialogs still lack **focus trap, scroll lock** (Esc works).
 - No offline draft support. Client-side search won't scale to thousands of rows.
 
@@ -404,15 +446,17 @@ NestJS/Express; hand-rolled Tailwind instead of shadcn/ui.
      the markdown for that JD (never invents), review, save as a tailored version. `parentId`
      self-relation on Resume for version lineage; reuses the Gemini AI path.
   - ~~Slice 3~~ ✅ done — ATS match scoring (resume vs JD) + PDF export (markdown → PDF).
-6. **Analytics** — Recharts over the accumulated data.
+6. ~~**Analytics**~~ ✅ done (Phase 8) — Insights dashboard derived client-side from the
+   jobs + application-snapshot caches. **No Recharts** — CSS/div bar charts (matches the
+   no-glossy-charts design rule and avoids a heavy dependency).
 
 Cross-cutting polish to fold in as we go: form-dialog a11y (focus-trap/scroll-lock),
 global search, scheduled follow-up reminders, dark-theme the Clerk widget.
 
-**→ Immediate next step: Phase 8 — Insights analytics (then Phase 9 — Global Search).**
-Phase 7 (Application Lifecycle + Historical Integrity) is ✅ done — Mark as Applied
-records an immutable `ApplicationSnapshot`; the accumulated snapshots (match at apply
-time, applied dates, submitted versions) are the raw material Insights charts over.
+**→ Immediate next step: Phase 9 — Global Search.**
+Phase 8 (Insights analytics) is ✅ done — `/dashboard/insights` charts the accumulated
+snapshots (match at apply time, applied dates) + live pipeline into KPIs, weekly activity,
+a funnel with conversions, and Match Score intelligence, all derived client-side.
 
 **✅ AI path live (2026-08-02):** analyzer verified end-to-end against Gemini via the
 native Google SDK (`gemini-3.5-flash-lite`, 15 RPM / 500 RPD free tier). Slice 2 can build
@@ -493,4 +537,5 @@ For production deployment, **use Neon** for PostgreSQL hosting. See the database
 2. ✅ Deploy app (Vercel)
 3. ⏳ Point custom domain to Vercel (if desired)
 4. ⏳ Set up GitHub Actions for CI/CD (optional; Vercel auto-deploys on `main` push)
-5. ⏳ **Phase 8:** Insights analytics (charts over accumulated jobs + application snapshots)
+5. ✅ **Phase 8:** Insights analytics (client-side charts over accumulated jobs + application snapshots)
+6. ⏳ **Phase 9:** Global Search
