@@ -1,7 +1,7 @@
 # Project State — AI Job Tracker
 
 _Living doc. Update as the project progresses._
-Last updated: 2026-08-21 (Productization v2 — Phase 8: Insights analytics)
+Last updated: 2026-08-21 (Productization v2 — Phase 9: Global Search — **Phase 1–9 complete**)
 
 ---
 
@@ -206,13 +206,52 @@ and `PRODUCT_UX_SPEC_V2.md`. Working in vertical slices.
   outcome sample floor, local-week grouping + window drop, ± growth and zero-baseline→null delta,
   funnel counts + conversions). `tsc`, **100 tests**, and `next build` all green.
 
-**Not yet implemented**
-- Phase 6 — Resume Review + Export ✅
-- Phase 7 — Application Lifecycle + Historical Integrity ✅
-- Phase 8 — Insights analytics ✅
-- Phase 9 — Global Search
+- **Phase 9 — Global Search.** A single command-style overlay that searches every
+  entity from the dashboard shell. **Entry point, not a tab (§6):** a compact header
+  trigger (Search icon + label + `⌘K`/`Ctrl K` hint) sits beside the theme toggle in
+  `layout.tsx`; the six-tab IA is unchanged. **Architecture — client-side, no new
+  endpoint (§28):** all four datasets are already fully cached by the existing
+  owner-scoped hooks (`useJobs`, `useRecruiters`, `useResumes` incl. `content`,
+  `useAnalyses` incl. `result`+`jobId`). Search runs over those caches in memory —
+  owner-scoping is enforced server-side (`where: { userId }`), so client-side search
+  **cannot leak cross-user** and needed no `/api/search`, no analytics of a fetch. The
+  data-fetching panel only mounts while the overlay is **open** (the Dialog returns
+  `null` when closed), so no dataset loads on ordinary dashboard page views. **No AI,
+  no embeddings/vectors/RAG, no Elasticsearch/Algolia** — pure deterministic string
+  matching (§31/§32). **Core** (`src/features/search/search.ts`, DB-free, unit-tested):
+  `normalizeSearchText` folds case + strips punctuation (Unicode-aware); `searchAll`
+  scores each entity's fields in tiers — **primary** (job position/company, contact
+  name/company, resume name, analysis title/linked-job) beats **metadata** (location,
+  source, status, email, phone, master/tailored) beats **content** (notes, description,
+  résumé body) — with `exact > starts-with > contains > all-terms-present` modifiers, so
+  an exact company match outranks a body-text hit. Results are grouped in the fixed order
+  **Applications → Contacts → Resumes → Analyses**, only non-empty groups rendered, ~5
+  per group (§12/§13/§26). **Deep links (§14–17):** Applications & Analyses →
+  `/dashboard/workspace?jobId=<id>` (reuses Phase 4, zero change; a legacy analysis with
+  no `jobId` → `/dashboard/analyze`); Contacts → `/dashboard/recruiters?q=<name>`;
+  Resumes → `/dashboard/resumes?resume=<id>`. The Contacts and Resumes pages read that
+  param in a mount-only `useEffect` (`window.location.search`, seeding their existing
+  local state — no `useSearchParams`, so no CSR-bailout footgun) to pre-filter / open the
+  right item; **no existing page-level search or filter was removed (§27).** **UX:** the
+  Phase 2 `Dialog` primitive is **reused** (§21) — added one optional `initialFocusRef`
+  prop so the search input takes focus on open; no second dialog, focus-trap/scroll-lock/
+  Escape/focus-restore all inherited. Empty query shows a **Recent** list (newest 7 across
+  all entities); full keyboard nav (ArrowUp/Down through the flat result list, Enter to
+  open, Escape to close), **Ctrl/Cmd+K** to open anywhere, `/` to open only when not
+  already typing in an input (§7/§20). All states covered (§8): closed, empty query,
+  loading (only when nothing cached yet), results, no-results (echoes the query), error +
+  **Try Again** (per-query refetch of only what errored). **Accessibility (§22):** input
+  is `role="combobox"` with `aria-controls`/`aria-activedescendant`/`aria-autocomplete`,
+  results are a `role="listbox"` of `role="option"` rows grouped by `role="group"`;
+  trigger carries `aria-keyshortcuts`. **Responsive (§23):** the trigger collapses to an
+  icon on small screens; the overlay is width-constrained and scrolls. **Tests:** 13 new
+  vitest cases for the pure search core (normalize; case-insensitivity; partial/multi-term;
+  tier ordering exact>starts>contains; metadata + tailored-indicator matching; multi-entity;
+  empty-query → `[]` and Recent newest-first; no-results; every deep-link target incl.
+  encoded `?q=`/`?resume=` and linked-vs-legacy analysis; per-group limit 5). `tsc`,
+  **113 tests**, and `next build` all green.
 
-**→ Next productization phase: Phase 9 — Global Search.**
+**Productization v2 Phase 1–9 complete.**
 
 **Recorded future product decisions (NOT implemented):** AI Workspace as a persistent
 job-centric workspace (not a forced wizard); "Analyze New Job" as a first-class entry
@@ -316,7 +355,7 @@ Ai Job Tracker/
 │   │   ├── page.tsx             # public landing (hero + pipeline signature + CTAs)
 │   │   ├── globals.css
 │   │   ├── dashboard/
-│   │   │   ├── layout.tsx       # shared chrome: wordmark + Home/Applications/AI Workspace/Resumes/Contacts/Insights nav + UserButton
+│   │   │   ├── layout.tsx       # shared chrome: wordmark + 6-tab nav + GlobalSearch trigger (Phase 9) + ThemeToggle + UserButton
 │   │   │   ├── page.tsx         # Overview (Home): stat tiles + follow-ups due + recent activity
 │   │   │   ├── jobs/page.tsx    # Jobs (Applications): list + filters + dialogs
 │   │   │   ├── recruiters/page.tsx  # Recruiters (Contacts): list + search + form
@@ -345,7 +384,9 @@ Ai Job Tracker/
 │       │   ├── schema.ts / schema.test.ts   # Zod + 4 vitest cases
 │       │   └── hooks.ts         # useResumes / import / create / update / delete
 │       ├── shared/zod.ts        # optionalString / optionalDate / optionalEnum helpers
-│       ├── ui/                  # Phase 2 primitives: Button / Dialog / SectionLabel
+│       ├── ui/                  # Phase 2 primitives: Button / Dialog (optional initialFocusRef) / SectionLabel
+│       ├── search/
+│       │   └── search.ts / search.test.ts / GlobalSearch.tsx  # Phase 9 global search: pure ranking core (13 cases) + overlay
 │       ├── jobs/
 │       │   ├── schema.ts / schema.test.ts   # Zod + 8 vitest cases (+ applyJobSchema)
 │       │   ├── apply.ts / apply.test.ts      # Phase 7 pure logic: canMarkApplied + buildSnapshotData (9 cases)
@@ -404,7 +445,7 @@ Built accurately **for the chosen scope** (auth + Jobs CRUD + dashboard + landin
 | CRUD Jobs | ✅ | all 11 fields + 11 statuses |
 | Filters | ✅ | status filter |
 | Dashboard | ✅ | 7 tiles + follow-ups-due list + recent-activity feed |
-| Search | ⚠️ | per-tab, client-side; spec wants one global search |
+| Search | ✅ | global overlay (⌘K) across jobs/contacts/resumes/analyses — client-side, deterministic ranking, deep links (Phase 9) |
 | CRUD Notes | ⚠️ | field on Job/Recruiter, not a standalone entity |
 | CRUD Recruiters | ✅ | full CRUD + follow-up dates + nav tab |
 | CRUD Resume Versions | ✅ | markdown CRUD + PDF/DOCX import + AI-tailored versions (parentId lineage) + PDF export |
@@ -418,7 +459,8 @@ Built accurately **for the chosen scope** (auth + Jobs CRUD + dashboard + landin
   per-change history or "X moved to INTERVIEW" granularity.
 - Follow-up **reminders** are surfaced on the Overview but not *scheduled* (no
   email/push); the spec's "follow up after 5 days" presets aren't built.
-- Remaining pillar: **Global Search** (Phase 9). Resume/AI and Analytics are built.
+- Remaining pillar: none — Resume/AI, Analytics (Phase 8), and Global Search (Phase 9)
+  are all built. Client-side search won't scale to thousands of rows per user (see below).
 - Accessibility: form dialogs still lack **focus trap, scroll lock** (Esc works).
 - No offline draft support. Client-side search won't scale to thousands of rows.
 
@@ -453,10 +495,10 @@ NestJS/Express; hand-rolled Tailwind instead of shadcn/ui.
 Cross-cutting polish to fold in as we go: form-dialog a11y (focus-trap/scroll-lock),
 global search, scheduled follow-up reminders, dark-theme the Clerk widget.
 
-**→ Immediate next step: Phase 9 — Global Search.**
-Phase 8 (Insights analytics) is ✅ done — `/dashboard/insights` charts the accumulated
-snapshots (match at apply time, applied dates) + live pipeline into KPIs, weekly activity,
-a funnel with conversions, and Match Score intelligence, all derived client-side.
+**→ Productization v2 Phase 1–9 complete.** Phase 9 (Global Search) is ✅ done — a
+⌘K command overlay in the dashboard shell searches jobs, contacts, resumes, and analyses
+over the existing owner-scoped caches (client-side, deterministic ranking, deep links),
+reusing the Phase 2 Dialog. All six planned productization pillars are built.
 
 **✅ AI path live (2026-08-02):** analyzer verified end-to-end against Gemini via the
 native Google SDK (`gemini-3.5-flash-lite`, 15 RPM / 500 RPD free tier). Slice 2 can build
@@ -538,4 +580,4 @@ For production deployment, **use Neon** for PostgreSQL hosting. See the database
 3. ⏳ Point custom domain to Vercel (if desired)
 4. ⏳ Set up GitHub Actions for CI/CD (optional; Vercel auto-deploys on `main` push)
 5. ✅ **Phase 8:** Insights analytics (client-side charts over accumulated jobs + application snapshots)
-6. ⏳ **Phase 9:** Global Search
+6. ✅ **Phase 9:** Global Search (⌘K overlay across jobs/contacts/resumes/analyses, client-side)

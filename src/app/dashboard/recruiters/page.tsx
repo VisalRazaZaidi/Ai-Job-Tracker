@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Recruiter } from "@prisma/client";
 import { Plus } from "lucide-react";
 import { useRecruiters } from "@/features/recruiters/hooks";
@@ -24,6 +24,12 @@ export default function RecruitersPage() {
   const [query, setQuery] = useState("");
   // dialog: undefined = closed, null = create, Recruiter = edit that recruiter.
   const [dialog, setDialog] = useState<Recruiter | null | undefined>(undefined);
+
+  // Deep link from global search: /dashboard/recruiters?q=<name> pre-filters.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) setQuery(q);
+  }, []);
 
   const filtered = useMemo(
     () => (recruiters ?? []).filter((r) => matchesQuery(r, query)),

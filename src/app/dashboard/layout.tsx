@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { ThemeToggle } from "@/features/ui/ThemeToggle";
+import { GlobalSearch } from "@/features/search/GlobalSearch";
 
 // Goal-oriented IA (Productization v2). Routes are preserved — only labels and
 // grouping change. "AI Workspace" points at the new /dashboard/workspace stub;
@@ -67,6 +68,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </nav>
         </div>
         <div className="flex items-center gap-1.5">
+          <GlobalSearch />
           <ThemeToggle />
           <UserButton afterSignOutUrl="/" />
         </div>

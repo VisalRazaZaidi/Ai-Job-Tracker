@@ -29,6 +29,12 @@ export default function ResumesPage() {
     if (!selectedId && resumes && resumes.length > 0) setSelectedId(resumes[0].id);
   }, [resumes, selectedId]);
 
+  // Deep link from global search: /dashboard/resumes?resume=<id> opens that one.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("resume");
+    if (id) setSelectedId(id);
+  }, []);
+
   const fileInput = useRef<HTMLInputElement>(null);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {

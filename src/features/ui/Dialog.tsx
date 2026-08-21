@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import { X } from "lucide-react";
 import { Button } from "./Button";
 
@@ -17,11 +17,14 @@ export function Dialog({
   title,
   onClose,
   children,
+  initialFocusRef,
 }: {
   open: boolean;
   title: string;
   onClose: () => void;
   children: ReactNode;
+  // Element to focus on open instead of the panel (e.g. a search input, §21).
+  initialFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -36,8 +39,9 @@ export function Dialog({
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    // 3. Move focus into the dialog (so Tab lands inside, not behind it).
-    panelRef.current?.focus();
+    // 3. Move focus into the dialog — a caller-supplied element if given
+    //    (e.g. the search input), else the panel so Tab lands inside.
+    (initialFocusRef?.current ?? panelRef.current)?.focus();
 
     // 4. Escape closes.
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
