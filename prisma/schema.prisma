@@ -19,6 +19,7 @@ model User {
   analyses   Analysis[]
   aiUsage    AiUsage[]
   tailoredResumeResults TailoredResumeResult[]
+  applicationSnapshots  ApplicationSnapshot[]
 }
 
 model Job {
@@ -40,6 +41,7 @@ model Job {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   analyses    Analysis[]
+  applicationSnapshot ApplicationSnapshot?
 
   @@index([userId, status])
 }
@@ -101,6 +103,7 @@ model Resume {
   versions   Resume[] @relation("ResumeVersions")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  applicationSnapshots ApplicationSnapshot[]
 
   @@index([userId])
 }
@@ -146,4 +149,31 @@ model TailoredResumeResult {
   createdAt DateTime @default(now())
 
   @@index([userId, resumeId, jobId])
+}
+
+// Phase 7 — the immutable historical record of an application. Created when a
+// Job is marked Applied. jobId is @unique (one snapshot per job → idempotent
+// apply). resumeName/resumeContent and jobDescription are COPIES taken at apply
+// time, so later edits to the master/tailored resume or the JD never change what
+// the record says was submitted (§5, §25). resumeId keeps a navigable reference
+// to the version if it still exists (SetNull if the resume is later deleted).
+// Deleting the Job removes its snapshot (Cascade) — the record has no meaning
+// without the application it belongs to.
+model ApplicationSnapshot {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId          String   @unique
+  job            Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  resumeId       String?
+  resume         Resume?  @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  resumeName     String
+  resumeContent  String   @db.Text
+  jobDescription String   @db.Text
+  matchScore     Int?
+  note           String?  @db.Text
+  appliedAt      DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
 }

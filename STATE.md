@@ -1,7 +1,7 @@
 # Project State — AI Job Tracker
 
 _Living doc. Update as the project progresses._
-Last updated: 2026-08-18 (Productization v2 — Phase 5: Match Score + Skill Gaps)
+Last updated: 2026-08-21 (Productization v2 — Phase 7: Application Lifecycle + Historical Integrity)
 
 ---
 
@@ -120,13 +120,61 @@ and `PRODUCT_UX_SPEC_V2.md`. Working in vertical slices.
   5 spec). Preserved all existing functionality. `tsc`, **71 tests** (23 integration +
   19 matcher + 29 existing), `prisma validate`, and `next build` all green.
 
+- **Phase 6 — Resume Review + Export.** Resume review remains local and deterministic,
+  covering word count, headings, detected skills, missing sections, and content issues.
+  Added client-side PDF export with `jspdf` from the current Markdown editor content,
+  including heading and bullet formatting, text wrapping, A4 pagination, and a separate
+  PDF download action. Existing Markdown export remains available. `tsc` and `next build`
+  pass.
+- **AI usage guardrails.** Job analyses and tailored resume results are persisted and
+  reused on refresh/revisit, preventing redundant provider calls. Re-analyze and re-tailor
+  actions are explicit. A user-level `AiUsage` ledger limits generation to 2 calls per
+  120-second window, with server-side enforcement and UI countdown/status messaging.
+
+- **Phase 7 — Application Lifecycle + Historical Integrity.** Connected the prep flow
+  (Job → Analysis → Match → Tailor) to the real application lifecycle via a **Mark as
+  Applied** action that records a **historically immutable `ApplicationSnapshot`**.
+  **Data model:** new `ApplicationSnapshot` (one-per-job via `jobId @unique` → idempotency
+  is free). It stores the resume and JD **as copies taken at apply time** (`resumeName`,
+  `resumeContent`, `jobDescription`), a nullable historical `matchScore`, an optional
+  `note`, and a server-stamped `appliedAt`. A nullable `resumeId` (`onDelete: SetNull`)
+  keeps a navigable pointer to the version if it still exists; deleting the Job cascades
+  the snapshot away. **Why copies:** master/tailored resumes and `Job.description` are all
+  mutable in place, so a plain FK would let history silently change — the copies make §5
+  integrity structural, not a convention. Synced via `prisma db push` (project convention).
+  **Pure decision logic** (`src/features/jobs/apply.ts`, DB-free, unit-tested):
+  `canMarkApplied(status)` allows WISHLIST (flips → APPLIED) and APPLIED (idempotent, no
+  status change), and **blocks** any later/closed state so a job is never dragged backward
+  from Interview/Offer/Rejected; `buildSnapshotData(...)` copies fields by value, prefers
+  an existing `dateApplied` else stamps now, trims/nulls the note, and treats a missing JD
+  as "". **API** `GET/POST /api/jobs/[id]/apply`: POST is owner-scoped on **both** job and
+  resume (§32), **idempotent** (existing snapshot returned untouched — never overwrites the
+  submitted resume or resets the date, §13), **atomic** (snapshot create + status/date move
+  in one `$transaction`), and **DB-only** — it **never calls Gemini and never touches the
+  `AiUsage` ledger** (§34). The recorded match is **recomputed server-side** from the latest
+  analysis via the deterministic `calculateMatch` (never trusts a client score; equals what
+  the UI showed). GET is owner-scoped and returns `null` for a foreign/unknown job (no leak).
+  All errors are friendly — no raw Prisma/stack/IDs (§28). **UI (Workspace):** resume
+  selection was **lifted** to `JobWorkspace` and shared by Match + a new **`ApplySection`**
+  (same `useMatchScore` args → shared cache, so the apply score can't disagree with the
+  displayed match and fires no extra request); the selector now also offers **tailored**
+  versions (optgroups) so you can apply with one. `ApplySection` shows a confirm `Dialog`
+  (role/company/resume/match/date + optional note, "Recording application…" pending), a
+  read-only **"Application recorded"** panel once a snapshot exists (submitted resume,
+  historical match, applied date, note + an immutability note), a blocking state pointing
+  to Resumes when none exist, and an info note for jobs already past Applied. **Tests:** 9
+  new vitest cases for `apply.ts` (decision matrix incl. all blocked states; copy-by-value
+  immutability against source mutation; matchScore incl. null/0; appliedAt precedence; note
+  trimming; null-JD → ""). Consistent with the repo's pure-function testing (no DB harness).
+  `tsc`, **84 tests**, `prisma validate`, and `next build` all green.
+
 **Not yet implemented**
-- Phase 6 — Resume Review + Export
-- Phase 7 — Application Lifecycle
+- Phase 6 — Resume Review + Export ✅
+- Phase 7 — Application Lifecycle + Historical Integrity ✅
 - Phase 8 — Insights analytics
 - Phase 9 — Global Search
 
-**→ Next productization phase: Phase 6 — Resume Review + Export.**
+**→ Next productization phase: Phase 8 — Insights analytics.**
 
 **Recorded future product decisions (NOT implemented):** AI Workspace as a persistent
 job-centric workspace (not a forced wizard); "Analyze New Job" as a first-class entry
@@ -193,10 +241,13 @@ The **auth + jobs CRUD + dashboard** slice is complete, verified, and running
 - **AI resume tailoring** — `/dashboard/resumes/tailor`: pick a master resume + a saved job →
   AI reorders/rewords the markdown to match the JD (never invents, per MasterPrompt) → review
   in an editable textarea → save as a **new tailored version** (`parentId` → the master; master
-  untouched). Tailored resumes show a "tailored" badge in the list. Reuses the Gemini AI path
-  and the existing `POST /api/resumes` for save. API: `POST /api/ai/tailor-resume` (looks up
-  both by id, ownership-checked; 422 if the job has no description). *ATS match score + PDF
-  export = next slice.*
+  untouched). Tailored resumes show a "tailored" badge in the list. Results are cached per
+  resume/job pair and reused on revisit; explicit re-tailoring is subject to the shared AI
+  cooldown. API: `POST /api/ai/tailor-resume` (looks up both by id, ownership-checked; 422 if
+  the job has no description). Resume editor exports both Markdown and paginated PDF files.
+- **AI request protection** — every generative endpoint checks the persisted user-level usage
+  ledger before calling Gemini. The UI displays the remaining cooldown and disables blocked
+  actions; deterministic match scoring does not consume an AI request.
 - **Tests** — vitest schema validation (29 tests). `tsc` and `vitest` green.
 
 - **Design system** — cool-tinted dark theme (Linear/Vercel lineage) via CSS
@@ -215,7 +266,7 @@ Docs: `SMOKE_TEST.md` (manual checklist + usage guide).
 ```
 Ai Job Tracker/
 ├── prisma/
-│   └── schema.prisma            # User, Job, Recruiter, Resume (parentId self-relation), Analysis (Job↔Analysis, jobId nullable/SetNull), enums
+│   └── schema.prisma            # User, Job, Recruiter, Resume (parentId self-relation), Analysis (Job↔Analysis, jobId nullable/SetNull), ApplicationSnapshot (jobId @unique, immutable resume/JD copies), enums
 ├── src/
 │   ├── middleware.ts            # Clerk route protection
 │   ├── lib/
@@ -237,6 +288,7 @@ Ai Job Tracker/
 │   │   ├── sign-up/[[...sign-up]]/page.tsx
 │   │   └── api/
 │   │       ├── jobs/route.ts + [id]/route.ts        # ownership-checked CRUD
+│   │       │   └── [id]/apply/route.ts               # Phase 7 — GET snapshot / POST mark-applied (idempotent, atomic, no AI)
 │   │       ├── recruiters/route.ts + [id]/route.ts  # ownership-checked CRUD
 │   │       ├── resumes/route.ts + [id]/route.ts + import/route.ts
 │   │       └── ai/analyze-job/route.ts + tailor-resume/route.ts + analyses/route.ts + analyses/[id]/route.ts
@@ -253,9 +305,10 @@ Ai Job Tracker/
 │       ├── shared/zod.ts        # optionalString / optionalDate / optionalEnum helpers
 │       ├── ui/                  # Phase 2 primitives: Button / Dialog / SectionLabel
 │       ├── jobs/
-│       │   ├── schema.ts / schema.test.ts   # Zod + 8 vitest cases
+│       │   ├── schema.ts / schema.test.ts   # Zod + 8 vitest cases (+ applyJobSchema)
+│       │   ├── apply.ts / apply.test.ts      # Phase 7 pure logic: canMarkApplied + buildSnapshotData (9 cases)
 │       │   ├── status.ts        # status → pipeline hue (signature color language)
-│       │   ├── hooks.ts         # useJobs / useJob / useCreateJob / useUpdateJob / useDeleteJob
+│       │   ├── hooks.ts         # useJobs / useJob / useCreateJob / useUpdateJob / useDeleteJob / useApplication / useMarkApplied
 │       │   ├── JobFormDialog.tsx / JobDetailDialog.tsx
 │       │   ├── JobRow.tsx / JobFilters.tsx
 │       └── recruiters/
@@ -312,8 +365,8 @@ Built accurately **for the chosen scope** (auth + Jobs CRUD + dashboard + landin
 | Search | ⚠️ | per-tab, client-side; spec wants one global search |
 | CRUD Notes | ⚠️ | field on Job/Recruiter, not a standalone entity |
 | CRUD Recruiters | ✅ | full CRUD + follow-up dates + nav tab |
-| CRUD Resume Versions | ✅ | markdown CRUD + PDF/DOCX import + AI-tailored versions (parentId lineage); PDF export pending (slice 3) |
-| AI Job Analysis | ✅ | multi-provider; saved history (list/open/delete); ATS match score deferred to #5 slice 3 |
+| CRUD Resume Versions | ✅ | markdown CRUD + PDF/DOCX import + AI-tailored versions (parentId lineage) + PDF export |
+| AI Job Analysis | ✅ | multi-provider; saved history (list/open/delete); deterministic ATS match scoring |
 | AI Resume Generation | ✅ | tailor a resume to a saved job (rewrite/reorder, no invention) |
 | Analytics | ❌ | |
 
@@ -350,13 +403,16 @@ NestJS/Express; hand-rolled Tailwind instead of shadcn/ui.
    - ~~Slice 2~~ ✅ done — AI tailoring: pick a resume + a saved job → AI rewords/reorders
      the markdown for that JD (never invents), review, save as a tailored version. `parentId`
      self-relation on Resume for version lineage; reuses the Gemini AI path.
-   - Slice 3 ← *next step* — ATS match scoring (resume vs JD) + PDF/DOCX export (markdown → PDF).
+  - ~~Slice 3~~ ✅ done — ATS match scoring (resume vs JD) + PDF export (markdown → PDF).
 6. **Analytics** — Recharts over the accumulated data.
 
 Cross-cutting polish to fold in as we go: form-dialog a11y (focus-trap/scroll-lock),
 global search, scheduled follow-up reminders, dark-theme the Clerk widget.
 
-**→ Immediate next step: #5 slice 3 — ATS match scoring + PDF export.**
+**→ Immediate next step: Phase 8 — Insights analytics (then Phase 9 — Global Search).**
+Phase 7 (Application Lifecycle + Historical Integrity) is ✅ done — Mark as Applied
+records an immutable `ApplicationSnapshot`; the accumulated snapshots (match at apply
+time, applied dates, submitted versions) are the raw material Insights charts over.
 
 **✅ AI path live (2026-08-02):** analyzer verified end-to-end against Gemini via the
 native Google SDK (`gemini-3.5-flash-lite`, 15 RPM / 500 RPD free tier). Slice 2 can build
@@ -371,10 +427,10 @@ shape as the Gemini branch).
 
 ## 6) Deployment & Production
 
-**Current status (2026-08-18):**
+**Current status (2026-08-21):**
 - ✅ Project pushed to GitHub
 - ✅ Repository initialized, .gitignore configured, `Prompts/` and `.playwright-mcp/` excluded
-- ✅ All phases implemented and tested (Phase 1–5 complete)
+- ✅ All phases implemented and tested (Phase 1–7 complete)
 - ⏳ **Next:** Deploy to Vercel + PostgreSQL database in production
 
 ### Recommended database provider: Neon
@@ -437,4 +493,4 @@ For production deployment, **use Neon** for PostgreSQL hosting. See the database
 2. ✅ Deploy app (Vercel)
 3. ⏳ Point custom domain to Vercel (if desired)
 4. ⏳ Set up GitHub Actions for CI/CD (optional; Vercel auto-deploys on `main` push)
-5. ⏳ **Phase 6:** Resume Review + PDF Export (continue product work)
+5. ⏳ **Phase 8:** Insights analytics (charts over accumulated jobs + application snapshots)

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Job } from "@prisma/client";
+import type { Job, ApplicationSnapshot } from "@prisma/client";
 import type { CreateJobInput, UpdateJobInput } from "./schema";
 
 async function json<T>(res: Response): Promise<T> {
@@ -71,5 +71,31 @@ export function useDeleteJob() {
       if (ctx?.previous) qc.setQueryData(KEY, ctx.previous);
     },
     onSettled: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+// Phase 7 — the recorded application snapshot for a job, or null if not applied
+// yet. Keyed under KEY so marking applied (which invalidates KEY) refetches it.
+export function useApplication(jobId: string | undefined) {
+  return useQuery({
+    queryKey: [...KEY, jobId, "application"],
+    queryFn: () =>
+      fetch(`/api/jobs/${jobId}/apply`).then((r) => json<ApplicationSnapshot | null>(r)),
+    enabled: !!jobId,
+  });
+}
+
+// Mark a job as applied. Idempotent server-side; invalidating KEY refreshes the
+// job (new status/date), the jobs list, and this job's application query.
+export function useMarkApplied(jobId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { resumeId: string; note?: string }) =>
+      fetch(`/api/jobs/${jobId}/apply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      }).then((r) => json<{ job: Job; snapshot: ApplicationSnapshot }>(r)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }

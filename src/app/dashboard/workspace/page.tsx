@@ -4,12 +4,21 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { Job } from "@prisma/client";
-import { ArrowLeft, ChevronDown, ChevronRight, ExternalLink, Search } from "lucide-react";
-import { useJobs, useJob } from "@/features/jobs/hooks";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Search,
+} from "lucide-react";
+import { useJobs, useJob, useApplication, useMarkApplied } from "@/features/jobs/hooks";
+import { canMarkApplied } from "@/features/jobs/apply";
 import { useJobAnalyses, useAnalyzeJob, useMatchScore } from "@/features/ai/hooks";
 import { useResumes } from "@/features/resumes/hooks";
 import { statusStyle, statusHex } from "@/features/jobs/status";
 import { Button } from "@/features/ui/Button";
+import { Dialog } from "@/features/ui/Dialog";
 import { SectionLabel } from "@/features/ui/SectionLabel";
 import { AnalysisResult } from "@/features/ai/AnalysisResult";
 import { MatchScore } from "@/features/ai/MatchScore";
@@ -180,20 +189,23 @@ function JobDescription({ job }: { job: Job }) {
   );
 }
 
-// ── Match score section ────────────────────────────────────────────────────
-function MatchSection({ job }: { job: Job }) {
+// ── Match score section (resume selection lifted to JobWorkspace) ───────────
+function MatchSection({
+  job,
+  selectedResumeId,
+  onSelectResume,
+}: {
+  job: Job;
+  selectedResumeId: string;
+  onSelectResume: (id: string) => void;
+}) {
   const { data: resumes, isLoading: resumesLoading } = useResumes();
   const { data: analyses, isLoading: analysesLoading } = useJobAnalyses(job.id);
-  const [selectedResumeId, setSelectedResumeId] = useState<string>("");
 
-  const masterResumes = (resumes ?? []).filter((r) => !r.parentId);
+  const allResumes = resumes ?? [];
+  const masters = allResumes.filter((r) => !r.parentId);
+  const tailored = allResumes.filter((r) => r.parentId);
   const hasAnalysis = (analyses ?? []).length > 0;
-
-  useEffect(() => {
-    if (!selectedResumeId && masterResumes[0]) {
-      setSelectedResumeId(masterResumes[0].id);
-    }
-  }, [masterResumes, selectedResumeId]);
 
   const { data: matchResult, isLoading: matchLoading, error: matchError } = useMatchScore(
     job.id,
@@ -201,15 +213,13 @@ function MatchSection({ job }: { job: Job }) {
     hasAnalysis
   );
 
-  const selectedResume = resumes?.find((r) => r.id === selectedResumeId);
-
   return (
     <div className="mt-8">
       <SectionLabel>Match Score</SectionLabel>
 
       {resumesLoading || analysesLoading ? (
         <p className="mt-4 text-muted">Loading resume and analysis data…</p>
-      ) : masterResumes.length === 0 ? (
+      ) : allResumes.length === 0 ? (
         <div className="mt-4 rounded-md border border-dashed border-line p-6 text-center">
           <p className="text-sm text-muted">No resumes yet.</p>
           <Link
@@ -230,19 +240,32 @@ function MatchSection({ job }: { job: Job }) {
         <>
           <div className="mt-4">
             <label htmlFor="resume-select" className="block text-sm font-medium text-fg">
-              Select resume to compare
+              Select resume to compare &amp; apply with
             </label>
             <select
               id="resume-select"
               value={selectedResumeId}
-              onChange={(e) => setSelectedResumeId(e.target.value)}
+              onChange={(e) => onSelectResume(e.target.value)}
               className="mt-2 w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-fg transition hover:border-accent focus:border-accent focus:outline-none"
             >
-              {masterResumes.map((resume) => (
-                <option key={resume.id} value={resume.id}>
-                  {resume.name}
-                </option>
-              ))}
+              {masters.length > 0 && (
+                <optgroup label="Master resumes">
+                  {masters.map((resume) => (
+                    <option key={resume.id} value={resume.id}>
+                      {resume.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {tailored.length > 0 && (
+                <optgroup label="Tailored resumes">
+                  {tailored.map((resume) => (
+                    <option key={resume.id} value={resume.id}>
+                      {resume.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </div>
 
@@ -261,7 +284,7 @@ function MatchSection({ job }: { job: Job }) {
           ) : (
             <div className="mt-6 rounded-md border border-line bg-surface p-6">
               <p className="text-sm text-muted">
-                This job doesn't have enough skill data to calculate a match score yet. 
+                This job doesn't have enough skill data to calculate a match score yet.
                 {matchResult && (
                   <> Run the job analysis first to extract required skills and keywords.</>
                 )}
@@ -269,6 +292,193 @@ function MatchSection({ job }: { job: Job }) {
             </div>
           )}
         </>
+      )}
+    </div>
+  );
+}
+
+// ── Application record (§5, §13, §15) ───────────────────────────────────────
+// A small key/value row used by both the confirm dialog and the recorded panel.
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <dt className="text-muted">{label}</dt>
+      <dd className="text-right font-medium text-fg">{value}</dd>
+    </div>
+  );
+}
+
+// A full date (with year) — this is a historical record, so the year matters.
+function fullDate(v: Date | string) {
+  return new Date(v).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function MarkAppliedDialog({
+  job,
+  resumeName,
+  matchScore,
+  onClose,
+  onConfirm,
+  pending,
+  error,
+}: {
+  job: Job;
+  resumeName: string | undefined;
+  matchScore: number | null;
+  onClose: () => void;
+  onConfirm: (note: string) => void;
+  pending: boolean;
+  error: string | null;
+}) {
+  const [note, setNote] = useState("");
+
+  return (
+    <Dialog open title="Mark as applied" onClose={onClose}>
+      <p className="text-sm text-muted">
+        This records an immutable snapshot of your application — the resume and job description
+        exactly as they are now. Editing them later won’t change this record.
+      </p>
+
+      <dl className="mt-4 space-y-2 rounded-md border border-line bg-surface p-4 text-sm">
+        <Row label="Role" value={job.position} />
+        <Row label="Company" value={job.company} />
+        <Row label="Resume" value={resumeName ?? "—"} />
+        <Row
+          label="Match score"
+          value={matchScore == null ? "Not calculated" : `${matchScore}%`}
+        />
+        <Row label="Applied" value="Today" />
+      </dl>
+
+      <label htmlFor="apply-note" className="mt-4 block text-sm font-medium text-fg">
+        Note <span className="font-normal text-muted">(optional)</span>
+      </label>
+      <textarea
+        id="apply-note"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        rows={3}
+        placeholder="e.g. Applied via referral from a former colleague"
+        className="mt-2 w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none"
+      />
+
+      {error && (
+        <div className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
+
+      <div className="mt-5 flex justify-end gap-2">
+        <Button variant="secondary" onClick={onClose} disabled={pending}>
+          Cancel
+        </Button>
+        <Button variant="primary" onClick={() => onConfirm(note)} disabled={pending}>
+          {pending ? "Recording application…" : "Confirm applied"}
+        </Button>
+      </div>
+    </Dialog>
+  );
+}
+
+function ApplySection({ job, selectedResumeId }: { job: Job; selectedResumeId: string }) {
+  const { data: snapshot, isLoading } = useApplication(job.id);
+  const { data: resumes } = useResumes();
+  const { data: analyses } = useJobAnalyses(job.id);
+  const markApplied = useMarkApplied(job.id);
+  const [open, setOpen] = useState(false);
+
+  const hasAnalysis = (analyses ?? []).length > 0;
+  // Same args as MatchSection → shares its cache, so the score shown here can't
+  // disagree with the displayed match and triggers no extra request.
+  const { data: matchResult } = useMatchScore(job.id, selectedResumeId, hasAnalysis);
+  const selectedResume = resumes?.find((r) => r.id === selectedResumeId);
+
+  // Don't flash the apply button before we know whether it's already recorded.
+  if (isLoading) return null;
+
+  if (snapshot) {
+    return (
+      <div className="mt-8">
+        <SectionLabel>Application</SectionLabel>
+        <div className="mt-3 rounded-md border border-line bg-surface p-5">
+          <div className="flex items-center gap-2 text-fg">
+            <CheckCircle2 size={18} className="text-emerald-400" />
+            <span className="font-medium">Application recorded</span>
+          </div>
+          <dl className="mt-4 space-y-2 text-sm">
+            <Row label="Resume submitted" value={snapshot.resumeName} />
+            <Row
+              label="Match at apply time"
+              value={snapshot.matchScore == null ? "Not calculated" : `${snapshot.matchScore}%`}
+            />
+            <Row label="Applied on" value={fullDate(snapshot.appliedAt)} />
+            {snapshot.note && <Row label="Note" value={snapshot.note} />}
+          </dl>
+          <p className="mt-4 text-xs text-muted">
+            The resume and job description you applied with are preserved with this record and
+            won’t change if you edit them later.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const decision = canMarkApplied(job.status);
+  const noResumes = (resumes ?? []).length === 0;
+
+  return (
+    <div className="mt-8">
+      <SectionLabel>Application</SectionLabel>
+
+      {!decision.ok ? (
+        <p className="mt-3 rounded-md border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
+          This application has progressed beyond the Applied stage, so a new application record
+          can’t be created here.
+        </p>
+      ) : noResumes ? (
+        <div className="mt-3 rounded-md border border-dashed border-line p-6 text-center">
+          <p className="text-sm text-muted">Add a resume before marking this job as applied.</p>
+          <Link
+            href="/dashboard/resumes"
+            className="mt-3 inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+          >
+            Create a resume
+          </Link>
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <Button variant="primary" onClick={() => setOpen(true)} disabled={!selectedResumeId}>
+            Mark as Applied
+          </Button>
+          <span className="text-xs text-muted">
+            Records exactly what you applied with
+            {selectedResume ? ` — ${selectedResume.name}` : ""}.
+          </span>
+        </div>
+      )}
+
+      {open && (
+        <MarkAppliedDialog
+          job={job}
+          resumeName={selectedResume?.name}
+          matchScore={matchResult?.score ?? null}
+          pending={markApplied.isPending}
+          error={markApplied.error?.message ?? null}
+          onClose={() => {
+            markApplied.reset();
+            setOpen(false);
+          }}
+          onConfirm={(note) =>
+            markApplied.mutate(
+              { resumeId: selectedResumeId, note: note.trim() || undefined },
+              { onSuccess: () => setOpen(false) }
+            )
+          }
+        />
       )}
     </div>
   );
@@ -375,6 +585,18 @@ function AnalysisSection({ job }: { job: Job }) {
 // ── Selected-job workspace ──────────────────────────────────────────────────
 function JobWorkspace({ jobId }: { jobId: string }) {
   const { data: job, isLoading, isError } = useJob(jobId);
+  const { data: resumes } = useResumes();
+  const [selectedResumeId, setSelectedResumeId] = useState("");
+
+  // One resume selection shared by Match + Apply, so you apply with exactly the
+  // resume you matched. Prefer a master; fall back to whatever exists so a user
+  // with only tailored resumes can still apply.
+  useEffect(() => {
+    if (selectedResumeId) return;
+    const list = resumes ?? [];
+    const first = list.find((r) => !r.parentId) ?? list[0];
+    if (first) setSelectedResumeId(first.id);
+  }, [resumes, selectedResumeId]);
 
   if (isLoading) {
     return (
@@ -412,7 +634,12 @@ function JobWorkspace({ jobId }: { jobId: string }) {
       <JobHeader job={job} />
       <JobDescription job={job} />
       <AnalysisSection job={job} />
-      <MatchSection job={job} />
+      <MatchSection
+        job={job}
+        selectedResumeId={selectedResumeId}
+        onSelectResume={setSelectedResumeId}
+      />
+      <ApplySection job={job} selectedResumeId={selectedResumeId} />
     </div>
   );
 }

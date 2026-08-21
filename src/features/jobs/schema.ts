@@ -34,5 +34,13 @@ export const createJobSchema = z.object({
 
 export const updateJobSchema = createJobSchema.partial();
 
+// Phase 7 — body for POST /api/jobs/[id]/apply. The resume is required (§12):
+// we never record an application without knowing what was submitted.
+export const applyJobSchema = z.object({
+  resumeId: z.string().trim().min(1, "Select a resume before marking as applied"),
+  note: optionalString,
+});
+
 export type CreateJobInput = z.infer<typeof createJobSchema>;
 export type UpdateJobInput = z.infer<typeof updateJobSchema>;
+export type ApplyJobInput = z.infer<typeof applyJobSchema>;
