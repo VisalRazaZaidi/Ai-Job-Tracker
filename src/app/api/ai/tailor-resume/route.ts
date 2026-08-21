@@ -4,6 +4,7 @@ import { getOrCreateUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { tailorResumeInputSchema } from "@/features/ai/schema";
 import { getModel, isAllowedModel, DEFAULT_MODEL } from "@/lib/ai";
+import { getAiRateLimitStatus, getAiRateLimitErrorMessage } from "@/lib/ai-rate-limit";
 
 export async function POST(req: Request) {
   const user = await getOrCreateUser();
@@ -40,8 +41,33 @@ export async function POST(req: Request) {
     .filter(Boolean)
     .join("\n");
 
+  const existingResult = await prisma.tailoredResumeResult.findFirst({
+    where: { userId: user.id, resumeId, jobId },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (existingResult) {
+    return NextResponse.json({ tailored: existingResult.content });
+  }
+
   const modelId =
     requestedModel && isAllowedModel(requestedModel) ? requestedModel : DEFAULT_MODEL;
+
+  const recentUsage = await prisma.aiUsage.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "asc" },
+  });
+  const rateLimit = getAiRateLimitStatus(
+    user.id,
+    recentUsage.map((entry) => ({ at: new Date(entry.createdAt).getTime(), count: 1 }))
+  );
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: getAiRateLimitErrorMessage(rateLimit.retryAfterSeconds) },
+      { status: 429 }
+    );
+  }
 
   try {
     const { text } = await generateText({
@@ -60,7 +86,25 @@ export async function POST(req: Request) {
         `Return the tailored resume in Markdown.`,
     });
 
-    return NextResponse.json({ tailored: text.trim() });
+    const tailored = text.trim();
+
+    await prisma.tailoredResumeResult.create({
+      data: {
+        userId: user.id,
+        resumeId,
+        jobId,
+        content: tailored,
+      },
+    });
+
+    await prisma.aiUsage.create({
+      data: {
+        userId: user.id,
+        action: "tailor-resume",
+      },
+    });
+
+    return NextResponse.json({ tailored });
   } catch (err) {
     const message = err instanceof Error ? err.message : "AI request failed";
     return NextResponse.json({ error: message }, { status: 502 });

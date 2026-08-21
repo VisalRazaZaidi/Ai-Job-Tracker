@@ -43,3 +43,6 @@ Prompts/
 
 # project context tracking (developer-specific)
 STATE.md
+# vercel / build output caches
+.vercel/
+*.tsbuildinfo

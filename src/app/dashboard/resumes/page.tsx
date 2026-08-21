@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Resume } from "@prisma/client";
-import { FileText, Plus, Sparkles, Trash2, Upload } from "lucide-react";
+import { Download, FileText, Plus, Sparkles, Trash2, Upload } from "lucide-react";
 import {
   useResumes,
   useImportResume,
@@ -11,6 +11,7 @@ import {
   useUpdateResume,
   useDeleteResume,
 } from "@/features/resumes/hooks";
+import { buildResumeReview } from "@/features/resumes/review";
 import { Button } from "@/features/ui/Button";
 
 export default function ResumesPage() {
@@ -139,15 +140,29 @@ function Editor({ resume, onDelete }: { resume: Resume; onDelete: () => void }) 
   const update = useUpdateResume(resume.id);
 
   const dirty = name !== resume.name || content !== resume.content;
+  const review = buildResumeReview(content);
+
+  function handleExport() {
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${(name || "resume").replace(/\s+/g, "-").toLowerCase()}.md`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex items-center gap-2">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="flex-1 rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium text-fg focus:border-accent focus:outline-none"
         />
+        <Button variant="secondary" size="sm" onClick={handleExport}>
+          <Download size={15} /> Export
+        </Button>
         <Button
           variant="primary"
           onClick={() => update.mutate({ name, content })}
@@ -173,6 +188,74 @@ function Editor({ resume, onDelete }: { resume: Resume; onDelete: () => void }) 
         spellCheck={false}
         className="w-full rounded-md border border-line bg-surface px-3 py-2.5 font-mono text-[13px] leading-relaxed text-fg focus:border-accent focus:outline-none"
       />
+
+      <div className="rounded-md border border-line bg-surface p-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-fg">Resume review</h2>
+          <span className="font-mono text-[10px] uppercase tracking-wide text-muted">
+            {review.wordCount} words
+          </span>
+        </div>
+
+        <p className="mt-2 text-sm text-muted">{review.summary}</p>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-md border border-line bg-raised p-3">
+            <div className="font-mono text-[10px] uppercase tracking-wide text-muted">Headings</div>
+            <div className="mt-1 text-xl font-semibold text-fg">{review.headingCount}</div>
+          </div>
+          <div className="rounded-md border border-line bg-raised p-3">
+            <div className="font-mono text-[10px] uppercase tracking-wide text-muted">Detected skills</div>
+            <div className="mt-1 text-xl font-semibold text-fg">{review.skills.length}</div>
+          </div>
+          <div className="rounded-md border border-line bg-raised p-3">
+            <div className="font-mono text-[10px] uppercase tracking-wide text-muted">Missing sections</div>
+            <div className="mt-1 text-xl font-semibold text-fg">{review.missingSections.length}</div>
+          </div>
+        </div>
+
+        {review.issues.length > 0 && (
+          <ul className="mt-4 space-y-2 text-sm text-red-300">
+            {review.issues.map((issue) => (
+              <li key={issue} className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
+                {issue}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {review.missingSections.length > 0 && (
+          <div className="mt-4">
+            <div className="font-mono text-[10px] uppercase tracking-wide text-muted">Missing sections</div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {review.missingSections.map((section) => (
+                <span
+                  key={section}
+                  className="rounded-full border border-line bg-surface px-2 py-1 text-xs text-muted"
+                >
+                  {section}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {review.skills.length > 0 && (
+          <div className="mt-4">
+            <div className="font-mono text-[10px] uppercase tracking-wide text-muted">Detected skills</div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {review.skills.slice(0, 12).map((skill) => (
+                <span
+                  key={skill}
+                  className="rounded-full border border-accent/30 bg-accent/10 px-2 py-1 text-xs text-accent"
+                >
+                  {skill}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {resume.sourceFile && (
         <p className="text-xs text-muted">Imported from {resume.sourceFile}</p>

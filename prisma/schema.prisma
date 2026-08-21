@@ -17,6 +17,8 @@ model User {
   recruiters Recruiter[]
   resumes    Resume[]
   analyses   Analysis[]
+  aiUsage    AiUsage[]
+  tailoredResumeResults TailoredResumeResult[]
 }
 
 model Job {
@@ -122,4 +124,26 @@ model Analysis {
 
   @@index([userId])
   @@index([jobId])
+}
+
+model AiUsage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model TailoredResumeResult {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resumeId  String
+  jobId     String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([userId, resumeId, jobId])
 }

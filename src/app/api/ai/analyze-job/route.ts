@@ -4,6 +4,7 @@ import { getOrCreateUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { analyzeJobInputSchema, jobAnalysisSchema } from "@/features/ai/schema";
 import { getModel, isAllowedModel, DEFAULT_MODEL } from "@/lib/ai";
+import { getAiRateLimitStatus, getAiRateLimitErrorMessage } from "@/lib/ai-rate-limit";
 
 export async function POST(req: Request) {
   const user = await getOrCreateUser();
@@ -18,6 +19,22 @@ export async function POST(req: Request) {
   const { description, jobId, model: requestedModel } = parsed.data;
   const modelId =
     requestedModel && isAllowedModel(requestedModel) ? requestedModel : DEFAULT_MODEL;
+
+  const recentUsage = await prisma.aiUsage.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: "asc" },
+  });
+  const rateLimit = getAiRateLimitStatus(
+    user.id,
+    recentUsage.map((entry) => ({ at: new Date(entry.createdAt).getTime(), count: 1 }))
+  );
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: getAiRateLimitErrorMessage(rateLimit.retryAfterSeconds) },
+      { status: 429 }
+    );
+  }
 
   // Resolve the text to analyze. In the Workspace flow the client sends only a
   // jobId; the JD MUST come from the owned Job record on the server — never trust
@@ -60,6 +77,14 @@ export async function POST(req: Request) {
         model: modelId,
       },
     });
+
+    await prisma.aiUsage.create({
+      data: {
+        userId: user.id,
+        action: "analyze-job",
+      },
+    });
+
     return NextResponse.json(saved, { status: 201 });
   } catch (err) {
     // Log the real provider error server-side; never leak it to the client (§12).

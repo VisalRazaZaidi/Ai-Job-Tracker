@@ -6,13 +6,14 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useResumes, useCreateResume } from "@/features/resumes/hooks";
 import { useJobs } from "@/features/jobs/hooks";
-import { useTailorResume } from "@/features/ai/hooks";
+import { useAiUsageStatus, useTailorResume } from "@/features/ai/hooks";
 import { AI_MODELS, DEFAULT_MODEL, type AiModelId } from "@/lib/ai";
 
 export default function TailorResumePage() {
   const router = useRouter();
   const { data: resumes } = useResumes();
   const { data: jobs } = useJobs();
+  const { data: usage } = useAiUsageStatus();
   const tailor = useTailorResume();
   const createResume = useCreateResume();
 
@@ -20,6 +21,23 @@ export default function TailorResumePage() {
   const [jobId, setJobId] = useState("");
   const [model, setModel] = useState<AiModelId>(DEFAULT_MODEL);
   const [draft, setDraft] = useState<string | null>(null);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!usage || usage.allowed) {
+      setCooldownSeconds(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const secondsLeft = Math.max(0, Math.ceil((usage.resetAt - Date.now()) / 1000));
+      setCooldownSeconds(secondsLeft);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [usage]);
+
+  const aiBlocked = usage ? !usage.allowed : false;
 
   // Default the pickers to the first of each once loaded.
   useEffect(() => {
@@ -67,6 +85,12 @@ export default function TailorResumePage() {
           to match the role — it never invents experience. Review before saving.
         </p>
       </div>
+
+      {usage && !usage.allowed && (
+        <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+          AI usage limit reached. You can run another resume tailoring in {cooldownSeconds || usage.retryAfterSeconds}s.
+        </div>
+      )}
       {/* PLACEHOLDER_CONTROLS */}
       {(noResumes || noJobs) && (
         <p className="rounded-lg border border-line bg-surface px-4 py-3 text-sm text-muted">
@@ -117,10 +141,10 @@ export default function TailorResumePage() {
             </select>
             <button
               onClick={handleTailor}
-              disabled={tailor.isPending || !resumeId || !jobId}
+              disabled={tailor.isPending || !resumeId || !jobId || aiBlocked}
               className="rounded-md bg-accent px-4 py-1.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-40"
             >
-              {tailor.isPending ? "Tailoring…" : draft ? "Re-tailor" : "Tailor"}
+              {tailor.isPending ? "Tailoring…" : aiBlocked ? `Wait ${cooldownSeconds || usage?.retryAfterSeconds || 0}s` : draft ? "Re-tailor" : "Tailor"}
             </button>
           </div>
 

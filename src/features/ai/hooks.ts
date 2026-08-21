@@ -5,6 +5,16 @@ import type { Analysis } from "@prisma/client";
 import type { JobAnalysis } from "./schema";
 import type { MatchResult } from "./matcher";
 
+export interface AiUsageStatus {
+  maxCalls: number;
+  windowMs: number;
+  remaining: number;
+  allowed: boolean;
+  retryAfterSeconds: number;
+  resetAt: number;
+  used: number;
+}
+
 // A saved analysis with its JSON result narrowed to the shape we wrote.
 export type SavedAnalysis = Omit<Analysis, "result"> & { result: JobAnalysis };
 
@@ -73,6 +83,20 @@ export function useDeleteAnalysis() {
       if (ctx?.previous) qc.setQueryData(KEY, ctx.previous);
     },
     onSettled: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+export function useAiUsageStatus() {
+  return useQuery({
+    queryKey: ["ai-usage"],
+    queryFn: () =>
+      fetch("/api/ai/usage").then((r) =>
+        json<AiUsageStatus>(r, "Failed to load AI usage")
+      ),
+    refetchInterval: (query) => {
+      const status = query.state.data as AiUsageStatus | undefined;
+      return status && !status.allowed ? 1000 : false;
+    },
   });
 }
 

@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/features/ui/Button";
 import { AnalysisResult } from "@/features/ai/AnalysisResult";
-import { useAnalyzeJob, useAnalyses, useDeleteAnalysis } from "@/features/ai/hooks";
+import { useAnalyzeJob, useAiUsageStatus, useAnalyses, useDeleteAnalysis } from "@/features/ai/hooks";
 import { AI_MODELS, DEFAULT_MODEL, type AiModelId } from "@/lib/ai";
 
 const NEW = "__new__";
 
 export default function AnalyzePage() {
   const { data: analyses, isLoading } = useAnalyses();
+  const { data: usage } = useAiUsageStatus();
   const del = useDeleteAnalysis();
   const { mutate, isPending, error, reset } = useAnalyzeJob();
 
@@ -18,6 +19,24 @@ export default function AnalyzePage() {
   const [selectedId, setSelectedId] = useState<string>("");
   const [description, setDescription] = useState("");
   const [model, setModel] = useState<AiModelId>(DEFAULT_MODEL);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!usage || usage.allowed) {
+      setCooldownSeconds(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const secondsLeft = Math.max(0, Math.ceil((usage.resetAt - Date.now()) / 1000));
+      setCooldownSeconds(secondsLeft);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [usage]);
+
+  const aiBlocked = usage ? !usage.allowed : false;
+  const submitDisabled = isPending || description.trim().length < 50 || aiBlocked;
 
   // Land on the most recent analysis, or the compose form if there's no history.
   useEffect(() => {
@@ -55,6 +74,12 @@ export default function AnalyzePage() {
           <Plus size={16} /> New
         </Button>
       </div>
+
+      {usage && !usage.allowed && (
+        <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+          AI usage limit reached. You can run another AI analysis in {cooldownSeconds || usage.retryAfterSeconds}s.
+        </div>
+      )}
 
       <div className="grid gap-5 md:grid-cols-[240px_1fr]">
         <ul className="space-y-1">
@@ -99,9 +124,9 @@ export default function AnalyzePage() {
                 <Button
                   type="submit"
                   variant="primary"
-                  disabled={isPending || description.trim().length < 50}
+                  disabled={submitDisabled}
                 >
-                  {isPending ? "Analyzing…" : "Analyze"}
+                  {isPending ? "Analyzing…" : aiBlocked ? `Wait ${cooldownSeconds || usage?.retryAfterSeconds || 0}s` : "Analyze"}
                 </Button>
               </div>
               {error && (
@@ -114,15 +139,28 @@ export default function AnalyzePage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-base font-medium text-fg">{selected.title}</h2>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => { del.mutate(selected.id); setSelectedId(NEW); }}
-                  aria-label="Delete analysis"
-                  className="hover:text-red-400"
-                >
-                  <Trash2 size={15} />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      reset();
+                      mutate({ description: selected.description, model }, { onSuccess: (saved) => setSelectedId(saved.id) });
+                    }}
+                    disabled={isPending || aiBlocked}
+                  >
+                    {isPending ? "Re-analyzing…" : "Re-analyze"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => { del.mutate(selected.id); setSelectedId(NEW); }}
+                    aria-label="Delete analysis"
+                    className="hover:text-red-400"
+                  >
+                    <Trash2 size={15} />
+                  </Button>
+                </div>
               </div>
               <AnalysisResult data={selected.result} />
             </div>
