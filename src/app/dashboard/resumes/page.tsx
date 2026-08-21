@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Resume } from "@prisma/client";
-import { Download, FileText, Plus, Sparkles, Trash2, Upload } from "lucide-react";
+import { Download, FileDown, FileText, Plus, Sparkles, Trash2, Upload } from "lucide-react";
+import { jsPDF } from "jspdf";
 import {
   useResumes,
   useImportResume,
@@ -152,6 +153,47 @@ function Editor({ resume, onDelete }: { resume: Resume; onDelete: () => void }) 
     URL.revokeObjectURL(url);
   }
 
+  function handlePdfExport() {
+    const document = new jsPDF({ unit: "pt", format: "a4" });
+    const margin = 48;
+    const pageWidth = document.internal.pageSize.getWidth();
+    const pageHeight = document.internal.pageSize.getHeight();
+    const contentWidth = pageWidth - margin * 2;
+    let y = margin;
+
+    const ensureSpace = (height: number) => {
+      if (y + height > pageHeight - margin) {
+        document.addPage();
+        y = margin;
+      }
+    };
+
+    content.split(/\r?\n/).forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        y += 8;
+        return;
+      }
+
+      const heading = trimmed.match(/^(#{1,3})\s+(.+)$/);
+      const bullet = trimmed.match(/^[-*]\s+(.+)$/);
+      const text = heading?.[2] ?? bullet?.[1] ?? trimmed.replace(/[*_`]/g, "");
+      const fontSize = heading ? (heading[1].length === 1 ? 18 : 13) : 10.5;
+      const lineHeight = fontSize + 4;
+      const indent = bullet ? 12 : 0;
+      const lines = document.splitTextToSize(text, contentWidth - indent);
+
+      ensureSpace(lines.length * lineHeight + (heading ? 8 : 2));
+      document.setFont("helvetica", heading ? "bold" : "normal");
+      document.setFontSize(fontSize);
+      if (bullet) document.text("•", margin, y);
+      document.text(lines, margin + indent, y);
+      y += lines.length * lineHeight + (heading ? 8 : 2);
+    });
+
+    document.save(`${(name || "resume").replace(/\s+/g, "-").toLowerCase()}.pdf`);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
@@ -162,6 +204,9 @@ function Editor({ resume, onDelete }: { resume: Resume; onDelete: () => void }) 
         />
         <Button variant="secondary" size="sm" onClick={handleExport}>
           <Download size={15} /> Export
+        </Button>
+        <Button variant="secondary" size="sm" onClick={handlePdfExport}>
+          <FileDown size={15} /> PDF
         </Button>
         <Button
           variant="primary"
