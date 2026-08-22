@@ -10,8 +10,6 @@ build/
 dist/
 
 # env files
-.env
-.env.local
 .env.*.local
 next-env.d.ts
 
@@ -25,7 +23,6 @@ yarn-debug.log*
 pnpm-debug.log*
 
 # editor / os
-.vscode/
 .DS_Store
 Thumbs.db
 *.swp
@@ -46,3 +43,4 @@ STATE.md
 # vercel / build output caches
 .vercel/
 *.tsbuildinfo
+config.bat

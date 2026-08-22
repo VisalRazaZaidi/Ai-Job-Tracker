@@ -1,267 +1,287 @@
-# AI Job Tracker
+<div align="center">
 
-A modern AI-powered job application workspace built for software engineers and job seekers who want to stay organized, compare their resume against job requirements, and keep everything in one place.
+# 🎯 AI Job Tracker
 
-This project combines job tracking, recruiter management, resume versioning, and AI analysis into a single dashboard built with Next.js, Prisma, Clerk, and the Google AI SDK.
+### Your personal Job CRM — track every application as a pipeline, not a spreadsheet.
 
-## Overview
+An AI-powered workspace that keeps your entire job search in one place: applications, recruiters, resumes, and role-by-role AI analysis — so nothing slips through the cracks.
 
-Job searching is chaotic: applications get lost, recruiter follow-ups slip through the cracks, and tailoring a resume for every job is time-consuming.
+<br/>
 
-AI Job Tracker is designed to be a personal Job CRM for career growth. Instead of juggling spreadsheets, notes, LinkedIn tabs, and random resume copies, you keep everything in one system:
+![Next.js](https://img.shields.io/badge/Next.js_15-000000?style=for-the-badge&logo=next.js&logoColor=white)
+![React](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript_5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_3-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma_6-2D3748?style=for-the-badge&logo=prisma&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![Clerk](https://img.shields.io/badge/Clerk_Auth-6C47FF?style=for-the-badge&logo=clerk&logoColor=white)
+![Google Gemini](https://img.shields.io/badge/Google_Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white)
 
-- track every application
-- save job descriptions and analysis
-- manage recruiter conversations
-- maintain a master resume
-- generate tailored versions
-- compare your resume against a role using a match score and skill gap view
-- keep your history organized without losing context
+![License](https://img.shields.io/badge/License-Personal_Use-2D2A7B?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-passing-22c55e?style=flat-square&logo=vitest&logoColor=white)
+![Status](https://img.shields.io/badge/status-active_development-EAF4FF?style=flat-square&labelColor=2D2A7B)
+
+<br/>
+
+<!-- 📸 Drop a product screenshot or demo GIF at docs/preview.png and it will render here:
+     ![AI Job Tracker preview](docs/preview.png) -->
+<em>🎨 Ghost White + Persian Indigo · light &amp; dark · WCAG AA</em>
+
+</div>
 
 ---
 
-## Key Features
+## 🧭 Overview
 
-### 1. Job tracking and workflow management
+Job searching is chaotic: applications get lost, recruiter follow-ups slip, and tailoring a resume for every role eats hours. **AI Job Tracker** replaces the pile of spreadsheets, sticky notes, and random resume copies with a single dashboard where you:
+
+- 📊 Track every application through its pipeline
+- 🤖 Analyze job descriptions with AI (skills, stack, ATS keywords)
+- 📄 Keep a master resume and generate tailored versions on demand
+- 🎯 Score your resume against a role and see the skill gaps
+- 👥 Manage recruiter conversations and follow-ups
+- 📈 See your search at a glance with insights and global search
+
+---
+
+## ✨ Features
+
+| | Feature | What it does |
+|:--:|---|---|
+| 📊 | **Pipeline tracking** | Create, edit, filter, and move applications through each stage — with color-coded status. |
+| 🤖 | **AI job analysis** | Extract seniority, tech stack, required/optional skills, responsibilities, and ATS keywords from any job description. |
+| 📄 | **Resume management** | Upload PDF/DOCX, auto-extract to editable markdown, and keep a versioned master resume. |
+| 🎯 | **Match scoring** | Deterministic 0–100 score comparing a resume to a role, with strong / partial / missing skills. |
+| ✍️ | **Resume tailoring** | AI reorders and rewords your existing resume for a role — never invents experience — saved as a new version. |
+| 📤 | **PDF export** | Export any resume version to a clean PDF. |
+| 🔖 | **Application snapshots** | "Mark as Applied" freezes an immutable snapshot of what you submitted. |
+| 👥 | **Recruiter CRM** | Track contacts, companies, and follow-up reminders. |
+| 📈 | **Insights dashboard** | Analytics across your pipeline and activity. |
+| 🔍 | **Global search** | Jump to any job, resume, or recruiter from one overlay. |
+| 🔐 | **Scoped security** | Every record is scoped to the signed-in user via Clerk. |
+
+<details>
+<summary><strong>See detailed capabilities</strong></summary>
+
+**Job tracking & workflow**
 - Create, edit, and delete job applications
 - Track status across your pipeline
-- Store job descriptions, notes, URL, salary, location, and source
-- Filter by status and search by company, position, or keywords
+- Store description, notes, URL, salary, location, and source
+- Filter by status and search by company, position, or keyword
 - View application history and recent activity
 
-### 2. AI job analysis workspace
-- Analyze a saved job description to extract:
-  - seniority
-  - company summary
-  - tech stack
-  - required skills
-  - optional skills
-  - responsibilities
-  - ATS keywords
-- Save job-specific analysis history
-- Re-run analysis without losing prior records
-- Review the latest result directly in the workspace
+**AI analysis workspace**
+- Analyze a saved description to extract seniority, company summary, tech stack, required & optional skills, responsibilities, and ATS keywords
+- Save per-job analysis history and re-run without losing prior records
 
-### 3. Resume management
-- Keep a master resume as the source of truth
-- Upload PDF or DOCX resumes
-- Extract text automatically into editable markdown
-- Maintain a clean, versioned resume workflow
-- Tailor resumes for specific jobs without overwriting the master copy
-
-### 4. Resume-to-job match scoring
+**Resume-to-job match scoring**
 - Compare a selected resume against a job analysis
-- Get a deterministic match score from 0 to 100
-- View strong matches, partial matches, and missing skills
-- Understand which skills are missing or underrepresented
-- Help guide resume improvements before applying
+- Deterministic score from 0–100 with strong, partial, and missing skills
+- Guides resume improvements before you apply
 
-### 5. Recruiter tracking
-- Track recruiters and contacts
-- Save company, email, phone, LinkedIn, notes, follow-ups
-- Keep reminders for outreach and communication follow-ups
+**Recruiter tracking**
+- Save company, email, phone, LinkedIn, notes, and follow-ups
+- Reminders for outreach and communication
 
-### 6. Dashboard and productivity overview
-- Dashboard with quick job pipeline visibility
-- Follow-up reminders
-- Recent activity feed
-- Goal-oriented command-center layout for staying on top of application workflow
-
-### 7. Secure and scoped data access
-- Authentication via Clerk
-- Every job, resume, and analysis is scoped to the signed-in user
-- Prevents cross-user access to personal records
+</details>
 
 ---
 
-## Tech Stack
+## 🎨 Design system
 
-- Next.js 15
-- React 19
-- TypeScript
-- Tailwind CSS
-- Prisma ORM
-- PostgreSQL
-- Clerk Auth
-- Google AI SDK
-- Vitest
+Built on a two-color brand kit and a token-driven theme, so light and dark are the *same palette inverted*.
 
----
+![Ghost White](https://img.shields.io/badge/Ghost%20White-%23EAF4FF-EAF4FF?style=flat-square&labelColor=2D2A7B)
+![Persian Indigo](https://img.shields.io/badge/Persian%20Indigo-%232D2A7B-2D2A7B?style=flat-square&labelColor=EAF4FF&logoColor=2D2A7B)
 
-## Project Structure
-
-```text
-ai-job-tracker/
-├── prisma/
-│   └── schema.prisma
-├── src/
-│   ├── app/
-│   │   ├── api/
-│   │   ├── dashboard/
-│   │   ├── sign-in/
-│   │   └── sign-up/
-│   ├── features/
-│   ├── lib/
-│   └── middleware.ts
-├── .gitignore
-├── package.json
-├── next.config.js
-├── tailwind.config.ts
-├── tsconfig.json
-├── vitest.config.ts
-├── README.md
-└── SMOKE_TEST.md
-```
+- **Light (default):** Ghost White field, Persian Indigo text & accents
+- **Dark:** the brand inverted — Persian Indigo field, Ghost White contrast
+- Every text pair verified **WCAG AA** (primary contrast 10.9:1)
+- *Modern Digital Brutalism* — hard offset shadows, Geist / Geist Mono type
 
 ---
 
-## Getting Started
+## 🧱 Tech stack
+
+| Layer | Technology |
+|---|---|
+| **Framework** | Next.js 15 (App Router) · React 19 |
+| **Language** | TypeScript 5 |
+| **Styling** | Tailwind CSS 3 · CSS-variable theming (light/dark) |
+| **Auth** | Clerk |
+| **Database** | PostgreSQL · Prisma 6 |
+| **AI** | Vercel AI SDK · Google Gemini |
+| **Data fetching** | TanStack Query |
+| **Forms & validation** | React Hook Form · Zod |
+| **Files** | jsPDF (export) · Mammoth + pdf-parse (import) |
+| **Icons** | lucide-react |
+| **Testing** | Vitest |
+
+---
+
+## 🚀 Quick start
 
 ### Prerequisites
 
-Before running the project, make sure you have:
+- **Node.js** 20 LTS or newer
+- A running **PostgreSQL** database
+- A **Clerk** account (publishable + secret keys)
+- A **Google Gemini** API key
 
-- Node.js 18+ or 20+
-- PostgreSQL database running
-- A Clerk account and project keys
-- A Google AI API key
-
-### 1. Clone the repository
+### 1 · Clone & install
 
 ```bash
 git clone <your-repo-url>
 cd ai-job-tracker
-```
-
-### 2. Install dependencies
-
-```bash
 npm install
 ```
 
-### 3. Configure environment variables
+### 2 · Configure environment
 
-Create a `.env` file in the root directory and add the following values:
+Create a `.env` file in the project root:
 
 ```env
+# Database
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
+
+# Auth (Clerk)
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="your-clerk-publishable-key"
 CLERK_SECRET_KEY="your-clerk-secret-key"
+
+# AI (Google Gemini — default provider)
 GOOGLE_GENERATIVE_AI_API_KEY="your-google-ai-key"
 ```
 
-If you use other AI providers, the app may also support additional model keys depending on configuration.
-
-### 4. Generate Prisma client
+### 3 · Set up the database
 
 ```bash
 npx prisma generate
-```
-
-If Prisma needs a fresh schema sync in your local database:
-
-```bash
 npx prisma db push
 ```
 
-### 5. Run the app
+### 4 · Run
 
 ```bash
 npm run dev
 ```
 
-Then open:
+Open **[http://localhost:3000](http://localhost:3000)** 🎉
+
+---
+
+## 🔑 Environment variables
+
+| Variable | Required | Description |
+|---|:--:|---|
+| `DATABASE_URL` | ✅ | PostgreSQL connection string |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | ✅ | Clerk publishable key |
+| `CLERK_SECRET_KEY` | ✅ | Clerk secret key |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | ✅ | Google Gemini key — the default AI provider |
+| `AI_MODEL` | ⬜ | Override the default model (`gemini-3.5-flash-lite`) |
+| `AI_BASE_URL` · `AI_API_KEY` | ⬜ | Advanced: route non-Gemini models through an OpenAI-compatible gateway |
+
+---
+
+## 📜 Scripts
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start the dev server on `:3000` |
+| `npm run build` | Generate the Prisma client, then build for production |
+| `npm run start` | Run the production server |
+| `npm run lint` | ESLint checks |
+| `npm run test` | Run the Vitest suite once |
+| `npm run test:watch` | Watch tests while developing |
+
+---
+
+## 🗂️ Project structure
 
 ```text
-http://localhost:3000
+ai-job-tracker/
+├── prisma/
+│   └── schema.prisma          # data model
+├── src/
+│   ├── app/
+│   │   ├── api/               # route handlers
+│   │   ├── dashboard/         # authenticated app (jobs, resumes, insights…)
+│   │   ├── sign-in/
+│   │   └── sign-up/
+│   ├── features/              # feature modules (jobs, resumes, ai, ui…)
+│   ├── lib/                   # ai config, db, shared helpers
+│   └── middleware.ts          # Clerk route protection
+├── package.json
+├── next.config.js
+├── tailwind.config.ts
+├── tsconfig.json
+├── vitest.config.ts
+└── README.md
 ```
 
 ---
 
-## Available Scripts
+## 🧭 Usage workflow
+
+1. 🔐 Sign in with Clerk
+2. ➕ Add one or more job applications
+3. 📝 Save the original job description
+4. 🤖 Run AI analysis on the role
+5. 📄 Upload or create a resume
+6. 🎯 Compare your resume to the job with **Match Score**
+7. ✍️ Tailor the resume for the role
+8. 📤 Export to PDF and mark it **Applied**
+9. 👥 Track recruiter follow-ups and progress
+
+---
+
+## 🧪 Testing
+
+Core logic — match scoring and schema validation — is covered by **Vitest** pure-function tests (no database harness required):
 
 ```bash
-npm run dev         # start Next.js in development mode
-npm run build       # build the production app
-npm run start       # run the production server
-npm run lint        # run lint checks
-npm run test        # run Vitest tests
-npm run test:watch  # watch tests while developing
+npm run test
 ```
 
 ---
 
-## Development Notes
+## 🗺️ Roadmap
 
-### Prisma note
-If `npx prisma generate` fails on your machine due to environment or filesystem issues, run it manually in your terminal and send the exact error output before continuing. This project relies on Prisma for the database layer and AI-analysis persistence.
+- [ ] Richer, ATS-style match analysis
+- [ ] Deeper insights & trend analytics
+- [ ] Shareable application snapshots
+- [ ] Multi-resume comparison against a single role
+- [ ] Bulk import of applications
 
-### Project Context (STATE.md)
-This repository includes a `STATE.md` file that tracks the project's phases, architecture, progress, and deployment notes. This file is intentionally excluded from version control (`.gitignore`) because it is maintained by individual developers as a personal reference.
-
-**When you first clone this project, create your own `STATE.md` file** to track:
-- Current phase and implementation status
-- Architecture decisions and notes for your AI agent
-- Deployment checklist and environment setup
-- Any debugging notes or blockers
-
-Your `STATE.md` serves as a living document for you and your AI assistant during development. Each contributor creates and maintains their own copy — this keeps the repo clean and lets everyone use their own tracking format.
-
-### Authentication
-The app uses Clerk and protects the main dashboard and API routes behind signed-in user sessions.
-
-### AI behavior
-The app intentionally keeps AI usage focused on analysis and resume tailoring rather than automating the entire job search process.
+> ✅ Recently shipped: Insights dashboard · Global search · PDF export · immutable application snapshots · Ghost White + Persian Indigo rebrand.
 
 ---
 
-## Usage Workflow
+## 🔒 Security & privacy
 
-A typical workflow looks like this:
+- Authentication and session management via **Clerk**
+- Every job, resume, analysis, and recruiter record is **scoped to the signed-in user**
+- No cross-user access to personal records
 
-1. Sign in with Clerk
-2. Add one or more job applications
-3. Save the original job description
-4. Run AI analysis on the job
-5. Upload or create a resume
-6. Compare your resume to the job using Match Score
-7. Tailor the resume for the role
-8. Track recruiter follow-ups and application progress
+AI usage is deliberately focused on **analysis and resume tailoring** — it never automates applications or fabricates credentials. This is a personal productivity tool for running a *better* job search, not a bot that runs it for you.
 
 ---
 
-## Current Status
+<details>
+<summary>🛠️ <strong>Development notes</strong></summary>
 
-This project is currently in active productization and includes:
+**Prisma:** If `npx prisma generate` fails due to a local environment or filesystem issue, run it manually and check the exact error before continuing — the database layer and AI-analysis persistence depend on it.
 
-- dashboard overview
-- job tracking and workflow stages
-- recruiter management
-- resume upload and editing
-- AI-based job analysis
-- AI match scoring and skill-gap analysis
-- test coverage for matching logic and schema validation
+**STATE.md:** This repo expects a personal `STATE.md` (git-ignored) that tracks phases, architecture decisions, and deployment notes per developer. Create your own after cloning to keep a living reference for you and your AI assistant — the repo stays clean and everyone uses their own format.
+
+</details>
 
 ---
 
-## Roadmap
+## 📄 License
 
-Planned future improvements include:
+Currently for **personal and project use**. Confirm licensing before publishing or distributing externally.
 
-- resume review and export workflows
-- more advanced ATS-style match analysis
-- richer application lifecycle tracking
-- export/shareable application snapshots
-- deeper insights and analytics
-
----
-
-## Important
-
-This project is a personal productivity tool for job tracking and resume optimization. It is intended to help users manage their job search process more effectively, not automate applications or fake credentials.
-
----
-
-## License
-
-This project is currently for personal and project use. If you intend to publish or distribute it publicly, confirm the licensing before sharing externally.
+<div align="center">
+<br/>
+<sub>Built with Next.js · Prisma · Google Gemini — themed in Ghost White + Persian Indigo.</sub>
+</div>
