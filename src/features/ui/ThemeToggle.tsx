@@ -5,14 +5,14 @@ import { Moon, Sun } from "lucide-react";
 import { Button } from "@/features/ui/Button";
 
 // Reads the theme set by the inline script in the root layout (no flash on
-// first paint). Fallback to system preference if neither is set.
+// first paint). Brand default is light (Ghost White); dark is the inverted look.
 function getTheme() {
-  if (typeof document === "undefined") return "dark";
-  return document.documentElement.dataset.theme === "light" ? "light" : "dark";
+  if (typeof document === "undefined") return "light";
+  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
 }
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
     setTheme(getTheme());

@@ -13,6 +13,7 @@ export default {
         fg: "var(--fg)",
         muted: "var(--muted)",
         accent: "var(--accent)",
+        "accent-fg": "var(--accent-fg)",
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],

@@ -57,7 +57,7 @@ function JobPicker() {
           <p className="text-muted">No saved applications yet.</p>
           <Link
             href="/dashboard/jobs"
-            className="mt-3 inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+            className="mt-3 inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition hover:opacity-90"
           >
             Add your first application
           </Link>
@@ -224,7 +224,7 @@ function MatchSection({
           <p className="text-sm text-muted">No resumes yet.</p>
           <Link
             href="/dashboard/resumes"
-            className="mt-3 inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+            className="mt-3 inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition hover:opacity-90"
           >
             Create a resume
           </Link>
@@ -444,7 +444,7 @@ function ApplySection({ job, selectedResumeId }: { job: Job; selectedResumeId: s
           <p className="text-sm text-muted">Add a resume before marking this job as applied.</p>
           <Link
             href="/dashboard/resumes"
-            className="mt-3 inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+            className="mt-3 inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition hover:opacity-90"
           >
             Create a resume
           </Link>

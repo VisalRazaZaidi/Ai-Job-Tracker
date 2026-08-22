@@ -142,7 +142,7 @@ export default function TailorResumePage() {
             <button
               onClick={handleTailor}
               disabled={tailor.isPending || !resumeId || !jobId || aiBlocked}
-              className="rounded-md bg-accent px-4 py-1.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-40"
+              className="rounded-md bg-accent px-4 py-1.5 text-sm font-medium text-accent-fg transition hover:opacity-90 disabled:opacity-40"
             >
               {tailor.isPending ? "Tailoring…" : aiBlocked ? `Wait ${cooldownSeconds || usage?.retryAfterSeconds || 0}s` : draft ? "Re-tailor" : "Tailor"}
             </button>
@@ -167,7 +167,7 @@ export default function TailorResumePage() {
                 <button
                   onClick={handleSave}
                   disabled={createResume.isPending}
-                  className="rounded-md bg-accent px-4 py-1.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-40"
+                  className="rounded-md bg-accent px-4 py-1.5 text-sm font-medium text-accent-fg transition hover:opacity-90 disabled:opacity-40"
                 >
                   {createResume.isPending ? "Saving…" : "Save as new version"}
                 </button>

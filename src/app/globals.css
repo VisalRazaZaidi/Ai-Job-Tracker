@@ -3,30 +3,32 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
-
-  /* Cool-tinted dark base — not flat neutral gray. Linear/Vercel lineage. */
-  --bg: #0b0d10;
-  --surface: #14171c;
-  --raised: #1b1f26;
-  --line: #242a33;
-  --fg: #e7eaf0;
-  --muted: #8b94a3;
-  --accent: #6e62e5;
-}
-
-/* Light theme — same token contract, paper-tinted. Applied when the theme
-   toggle sets data-theme="light" on <html>. Accent hue held constant. */
-:root[data-theme="light"] {
   color-scheme: light;
 
-  --bg: #f7f8fa;
-  --surface: #ffffff;
-  --raised: #eef0f4;
-  --line: #d6dae1;
-  --fg: #14171c;
-  --muted: #626b7a;
-  --accent: #6e62e5;
+  /* Brand kit — Ghost White field, Persian Indigo contrast. The default look. */
+  --bg: #eaf4ff; /* Ghost White */
+  --surface: #ffffff; /* white cards lift off the ghost white */
+  --raised: #dceafb; /* deeper ghost white — nested chips, inputs, kbd */
+  --line: #c3d4ee; /* indigo-tinted borders */
+  --fg: #2d2a7b; /* Persian Indigo — all primary text */
+  --muted: #5b5895; /* lightened indigo — AA-legible secondary text */
+  --accent: #2d2a7b; /* Persian Indigo — CTAs, focus, active states */
+  --accent-fg: #ffffff; /* text/icons on an accent fill */
+}
+
+/* Dark theme — the brand inverted: Persian Indigo field, Ghost White contrast.
+   Applied when the toggle sets data-theme="dark" on <html>. Same two colors. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #2d2a7b; /* Persian Indigo field */
+  --surface: #262358; /* deeper indigo panels */
+  --raised: #201e4d; /* deeper still — nested/inputs/kbd */
+  --line: #423f86; /* lighter indigo divider, visible on the field */
+  --fg: #eaf4ff; /* Ghost White — all primary text */
+  --muted: #a9a7d6; /* dimmed ghost white — secondary text */
+  --accent: #eaf4ff; /* Ghost White — CTAs, focus, active states */
+  --accent-fg: #2d2a7b; /* Persian Indigo text on the ghost-white fill */
 }
 
 @layer base {

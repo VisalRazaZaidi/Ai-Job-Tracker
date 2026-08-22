@@ -15,10 +15,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
-        {/* Set theme before first paint to avoid a flash; syncs with ThemeToggle. */}
+        {/* Set theme before first paint to avoid a flash; syncs with ThemeToggle.
+            Brand default is light (Ghost White); a saved choice wins. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("theme")||(window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.dataset.theme=t;}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem("theme")||"light";document.documentElement.dataset.theme=t;}catch(e){}})();`,
           }}
         />
       </head>

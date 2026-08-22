@@ -6,7 +6,7 @@ import type { ReactNode, ButtonHTMLAttributes } from "react";
 // per screen); secondary = bordered; ghost/danger for tertiary/row actions.
 const VARIANTS = {
   primary:
-    "rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50",
+    "rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition hover:opacity-90 disabled:opacity-50",
   secondary:
     "rounded-md border border-line px-4 py-2 text-sm font-medium text-fg transition hover:bg-surface disabled:opacity-50",
   danger:

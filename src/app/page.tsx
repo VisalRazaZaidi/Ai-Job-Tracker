@@ -91,7 +91,7 @@ export default function LandingPage() {
           <SignedOut>
             <Link
               href="/sign-up"
-              className="flex items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+              className="flex items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg transition hover:opacity-90"
             >
               Get started <ArrowRight size={16} />
             </Link>
@@ -105,7 +105,7 @@ export default function LandingPage() {
           <SignedIn>
             <Link
               href="/dashboard"
-              className="flex items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+              className="flex items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg transition hover:opacity-90"
             >
               Open dashboard <ArrowRight size={16} />
             </Link>
